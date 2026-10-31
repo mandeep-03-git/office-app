@@ -310,7 +310,7 @@
   //  LOGIC MODULE (ported from logic.py)
   // ============================================================
 
-  const SOON_DAYS = 90;
+  const SOON_DAYS = 30;
   const STATUS_LABEL = {
     active: "Active",
     upcoming: "Upcoming",
@@ -432,7 +432,7 @@
       name: row.name,
       emp_type: row.emp_type || "Full-time",
       department: row.department || "Administrative",
-      level: (row.department === "Teaching" || (!row.department && row.level)) ? (row.level || "Primary") : null,
+      level: row.level || (row.department === "Teaching" ? "Primary" : null),
       join: date_view(join, cal),
       term: term ? date_view(term, cal) : null,
       status: status,
@@ -491,6 +491,37 @@
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) || a.id - b.id);
   }
 
+  // Level / Position options, depending on department
+  const SUBOPTIONS = {
+    "Teaching": ["Pre Primary", "Primary", "Lower Secondary", "Secondary", "ECA"],
+    "Administrative": ["Executive Director", "Principal", "Vice Principal", "Finance Director", "Admin Director", "IT Incharge", "Accounts Officer"],
+    "Non-Teaching": ["Receptionist", "Librarian", "Office Assistant", "Driver", "Canteen Staff", "Support Staff", "Security Guard", "Counselor"],
+  };
+  const SUB_LABEL = { "Teaching": "Teaching Level", "Administrative": "Position", "Non-Teaching": "Position" };
+
+  function _subKey(s) { return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, ""); }
+
+  // Returns a canonical level/position for the department, or null.
+  // Teaching always gets a value (defaults to Primary); the others may be empty.
+  function normalizeSub(dept, raw) {
+    const text = String(raw == null ? "" : raw).trim();
+    if (dept === "Teaching") {
+      const l = text.toLowerCase();
+      if (/\beca\b|extra\s*curricular/.test(l)) return "ECA";
+      if (l.includes("pre")) return "Pre Primary";
+      if (l.includes("lower")) return "Lower Secondary";
+      if (l.includes("secondary") || l.includes("sec")) return "Secondary";
+      return "Primary";
+    }
+    const list = SUBOPTIONS[dept] || [];
+    const k = _subKey(text);
+    if (!k) return null;
+    const hit = list.find(o => _subKey(o) === k) ||
+      (k === "counsellor" ? "Counselor" : null) ||
+      (k === "vp" ? "Vice Principal" : null);
+    return hit || null;
+  }
+
   function db_add_employee(name, join_iso, term_iso, emp_type, department, level) {
     const all = _loadEmployees();
     const id = _getNextId();
@@ -503,7 +534,7 @@
       term_date: term_iso || null,
       emp_type: emp_type || "Full-time",
       department: dept,
-      level: dept === "Teaching" ? (level || "Primary") : null,
+      level: normalizeSub(dept, level),
       created_at: now,
       updated_at: now,
       deleted_at: null,
@@ -523,7 +554,7 @@
     emp.term_date = term_iso || null;
     emp.emp_type = emp_type || "Full-time";
     emp.department = dept;
-    emp.level = dept === "Teaching" ? (level || "Primary") : null;
+    emp.level = normalizeSub(dept, level);
     emp.updated_at = _now();
     _saveEmployees(all);
     return true;
@@ -625,15 +656,8 @@
       department = "Administrative";
     }
 
-    // Level: Pre Primary, Primary, Lower Secondary, Secondary (only if Teaching)
-    let level = null;
-    if (department === "Teaching") {
-      const lLower = (payload.level || "").trim().toLowerCase();
-      if (lLower.includes("pre")) level = "Pre Primary";
-      else if (lLower.includes("lower")) level = "Lower Secondary";
-      else if (lLower.includes("secondary") || lLower.includes("sec")) level = "Secondary";
-      else level = "Primary";
-    }
+    // Level (Teaching) or Position (Administrative / Non-Teaching)
+    const level = normalizeSub(department, payload.level);
 
     const join = parse_date_field(payload.join, "join", "Joining date", true);
     const term = parse_date_field(payload.term, "term", "Termination date", false);
@@ -659,7 +683,7 @@
     { id: "name", label: "Name" },
     { id: "emp_type", label: "Employment Type" },
     { id: "department", label: "Department" },
-    { id: "level", label: "Teaching Level" },
+    { id: "level", label: "Level / Position" },
     { id: "join", label: "Date of Appointment" },
     { id: "served", label: "Service Time" },
     { id: "term", label: "Date of Termination" },
@@ -1635,10 +1659,12 @@
 
   function levelKey(l) {
     const s = (l || "").toLowerCase();
-    if (s.includes("pre")) return "pre";
-    if (s.includes("lower")) return "lower";
-    if (s.includes("sec")) return "sec";
-    return "pri";
+    if (s === "eca") return "eca";
+    if (s === "pre primary") return "pre";
+    if (s === "lower secondary") return "lower";
+    if (s === "secondary") return "sec";
+    if (s === "primary") return "pri";
+    return "role"; // Administrative / Non-Teaching positions
   }
 
   function th_el(label, key, isNum, colId) {
@@ -1767,7 +1793,7 @@
         th_el("Name", "name", false, "name"),
         th_el("Type", "emp_type", false, "emp_type"),
         th_el("Department", "department", false, "department"),
-        th_el("Level", "level", false, "level"),
+        th_el("Level / Position", "level", false, "level"),
         th_el("Date of Appointment", "join", false, "join"),
         th_el("Service Time", "served", false, "served"),
         th_el("Date of Termination", "term", false, "term"),
@@ -1923,7 +1949,7 @@
           h("th", {}, "Name"),
           h("th", {}, "Type"),
           h("th", {}, "Department"),
-          h("th", {}, "Level"),
+          h("th", {}, "Level / Position"),
           h("th", {}, "Date of Appointment"),
           h("th", {}, "Service Time"),
           h("th", {}, "Date of Termination"),
@@ -2633,14 +2659,11 @@
     // Job fields: Type, Department, Level
     const empTypeSelect = $("#f-emp-type");
     const deptSelect = $("#f-department");
-    const levelSelect = $("#f-level");
-    const levelField = $("#field-teaching-level");
 
     if (empTypeSelect) empTypeSelect.value = emp ? (emp.emp_type || "Full-time") : "Full-time";
     const curDept = emp ? (emp.department || "Teaching") : "Teaching";
     if (deptSelect) deptSelect.value = curDept;
-    if (levelField) levelField.hidden = curDept !== "Teaching";
-    if (levelSelect) levelSelect.value = emp && emp.level ? emp.level : "Primary";
+    fillSubSelect(curDept, emp ? emp.level : null);
 
     clearErrors();
 
@@ -2666,14 +2689,26 @@
   $("#cancelBtn").addEventListener("click", () => dlg.close());
   $("#dialogCloseX").addEventListener("click", () => dlg.close());
 
-  // Department change toggles teaching level field
+  // Fill the Level / Position dropdown to match the department
+  function fillSubSelect(dept, selected) {
+    const sel = $("#f-level");
+    const label = $("#f-level-label");
+    if (!sel) return;
+    const isTeaching = dept === "Teaching";
+    if (label) {
+      label.textContent = SUB_LABEL[dept] || "Position";
+      if (isTeaching) label.append(" ", h("span", { class: "req" }, "*"));
+    }
+    sel.replaceChildren();
+    if (!isTeaching) sel.append(h("option", { value: "" }, "— Select position —"));
+    (SUBOPTIONS[dept] || []).forEach(o => sel.append(h("option", { value: o }, o)));
+    sel.value = normalizeSub(dept, selected) || (isTeaching ? "Primary" : "");
+  }
+
+  // Department change swaps the Level / Position choices
   const deptSelectEl = $("#f-department");
-  const levelFieldEl = $("#field-teaching-level");
-  if (deptSelectEl && levelFieldEl) {
-    deptSelectEl.addEventListener("change", () => {
-      const isTeaching = deptSelectEl.value === "Teaching";
-      levelFieldEl.hidden = !isTeaching;
-    });
+  if (deptSelectEl) {
+    deptSelectEl.addEventListener("change", () => fillSubSelect(deptSelectEl.value, null));
   }
 
   // Form submission
@@ -2693,7 +2728,7 @@
 
     const empType = $("#f-emp-type") ? $("#f-emp-type").value : "Full-time";
     const department = $("#f-department") ? $("#f-department").value : "Administrative";
-    const level = (department === "Teaching" && $("#f-level")) ? $("#f-level").value : null;
+    const level = $("#f-level") ? ($("#f-level").value || null) : null;
 
     const jp = getGroupParts(groups.join);
     const tp = getGroupParts(groups.term);
@@ -2826,17 +2861,19 @@
       templateBtn.addEventListener("click", () => {
         let sampleCsv = "";
         if (currentImportCal === "bs") {
-          sampleCsv = "\uFEFFS.N.,Name,Employment Type,Department,Teaching Level,Date of Appointment,Date of Termination\r\n" +
+          sampleCsv = "\uFEFFS.N.,Name,Employment Type,Department,Level / Position,Date of Appointment,Date of Termination\r\n" +
             "1,Aarav Sharma,Full-time,Teaching,Secondary,2078-04-01,\r\n" +
             "2,Pooja Shrestha,Part-time,Teaching,Primary,2079-08-15,2083-08-14\r\n" +
-            "3,Rohan Adhikari,Full-time,Administrative,,2080-01-10,\r\n" +
-            "4,Sunita Gurung,Full-time,Non-Teaching,,2081-02-05,\r\n";
+            "3,Rohan Adhikari,Full-time,Administrative,Principal,2080-01-10,\r\n" +
+            "4,Sunita Gurung,Full-time,Non-Teaching,Librarian,2081-02-05,\r\n" +
+            "5,Binita Rai,Part-time,Teaching,ECA,2081-06-01,\r\n";
         } else {
-          sampleCsv = "\uFEFFS.N.,Name,Employment Type,Department,Teaching Level,Date of Appointment,Date of Termination\r\n" +
+          sampleCsv = "\uFEFFS.N.,Name,Employment Type,Department,Level / Position,Date of Appointment,Date of Termination\r\n" +
             "1,Aarav Sharma,Full-time,Teaching,Secondary,2021-07-16,\r\n" +
             "2,Pooja Shrestha,Part-time,Teaching,Primary,2022-12-01,2026-11-30\r\n" +
-            "3,Rohan Adhikari,Full-time,Administrative,,2023-04-24,\r\n" +
-            "4,Sunita Gurung,Full-time,Non-Teaching,,2024-05-18,\r\n";
+            "3,Rohan Adhikari,Full-time,Administrative,Principal,2023-04-24,\r\n" +
+            "4,Sunita Gurung,Full-time,Non-Teaching,Librarian,2024-05-18,\r\n" +
+            "5,Binita Rai,Part-time,Teaching,ECA,2024-09-15,\r\n";
         }
         const blob = new Blob([sampleCsv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
@@ -3002,7 +3039,7 @@
         nameIdx = firstRow.findIndex(c => /(name|employee|staff)/i.test(c));
         typeIdx = firstRow.findIndex(c => /(type|employment|timer)/i.test(c));
         deptIdx = firstRow.findIndex(c => /(department|dept)/i.test(c));
-        levelIdx = firstRow.findIndex(c => /(level|grade|stage)/i.test(c));
+        levelIdx = firstRow.findIndex(c => /(level|grade|stage|position|designation)/i.test(c));
         joinIdx = firstRow.findIndex(c => /(appoint|join|start)/i.test(c));
         termIdx = firstRow.findIndex(c => /(terminat|end|leave|expir)/i.test(c));
       }
@@ -3064,14 +3101,8 @@
         else if (/non/i.test(rawDept)) department = "Non-Teaching";
         else department = "Administrative";
 
-        let level = null;
-        if (department === "Teaching") {
-          const rawLvl = levelIdx >= 0 && row[levelIdx] ? row[levelIdx].trim() : "";
-          if (/pre/i.test(rawLvl)) level = "Pre Primary";
-          else if (/lower/i.test(rawLvl)) level = "Lower Secondary";
-          else if (/secondary|sec/i.test(rawLvl)) level = "Secondary";
-          else level = "Primary";
-        }
+        const rawLvl = levelIdx >= 0 && row[levelIdx] ? row[levelIdx].trim() : "";
+        const level = normalizeSub(department, rawLvl);
 
         const joinRaw = (row[joinIdx] || "").trim();
         const termRaw = termIdx >= 0 && row[termIdx] ? row[termIdx].trim() : "";
