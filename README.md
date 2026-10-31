@@ -30,6 +30,12 @@ Runs completely offline. No web server, Python, Node.js, databases, or network c
   - Real-time date conversion while typing appointment and termination dates.
   - Impossible dates (e.g. Day 32 in a 31-day month) are automatically caught and flagged.
 
+- **Level / Position**:
+  - Teaching staff: Pre Primary, Primary, Lower Secondary, Secondary, ECA.
+  - Administrative staff: Executive Director, Principal, Vice Principal, Finance Director, Admin Director, IT Incharge, Accounts Officer.
+  - Non-Teaching staff: Receptionist, Librarian, Office Assistant, Driver, Canteen Staff, Support Staff, Security Guard, Counselor.
+  - The dropdown changes automatically with the selected Department.
+
 - **Automated Tenure & Status Tracking**:
   - **Status Categories**: Active, Upcoming, Ending Soon (within 30 days), Ends Today, Ended.
   - **Service Time Calculation**: Accurate calendar-aware differences (Years, Months, Days).
