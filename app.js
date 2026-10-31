@@ -310,7 +310,7 @@
   //  LOGIC MODULE (ported from logic.py)
   // ============================================================
 
-  const SOON_DAYS = 30;
+  const SOON_DAYS = 90;
   const STATUS_LABEL = {
     active: "Active",
     upcoming: "Upcoming",
