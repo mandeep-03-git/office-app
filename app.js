@@ -258,8 +258,19 @@
     return { years, months, days, total_days };
   }
 
-  function format_date(cal, dt) {
+  function format_date(cal, dt, formatOverride) {
+    if (!dt) return "";
     const [y, m, d] = to_triple(cal, dt);
+    const fmt = formatOverride || (typeof S !== "undefined" && S.dateFormat ? S.dateFormat : "verbal");
+    const dd = String(d).padStart(2, "0");
+    const mm = String(m).padStart(2, "0");
+    const yyyy = String(y).padStart(4, "0");
+
+    if (fmt === "dmy_slash") return `${dd}/${mm}/${yyyy}`;
+    if (fmt === "ymd_dash") return `${yyyy}-${mm}-${dd}`;
+    if (fmt === "mdy_slash") return `${mm}/${dd}/${yyyy}`;
+    if (fmt === "dmy_dash") return `${dd}-${mm}-${yyyy}`;
+
     if (cal === "bs") return d + " " + BS_MONTHS[m - 1] + " " + y;
     return d + " " + AD_MONTHS[m - 1].substring(0, 3) + " " + y;
   }
@@ -419,6 +430,9 @@
     return {
       id: row.id,
       name: row.name,
+      emp_type: row.emp_type || "Full-time",
+      department: row.department || "Administrative",
+      level: (row.department === "Teaching" || (!row.department && row.level)) ? (row.level || "Primary") : null,
       join: date_view(join, cal),
       term: term ? date_view(term, cal) : null,
       status: status,
@@ -477,15 +491,19 @@
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) || a.id - b.id);
   }
 
-  function db_add_employee(name, join_iso, term_iso) {
+  function db_add_employee(name, join_iso, term_iso, emp_type, department, level) {
     const all = _loadEmployees();
     const id = _getNextId();
     const now = _now();
+    const dept = department || "Administrative";
     all.push({
       id: id,
       name: name,
       join_date: join_iso,
       term_date: term_iso || null,
+      emp_type: emp_type || "Full-time",
+      department: dept,
+      level: dept === "Teaching" ? (level || "Primary") : null,
       created_at: now,
       updated_at: now,
       deleted_at: null,
@@ -495,13 +513,17 @@
     return id;
   }
 
-  function db_update_employee(id, name, join_iso, term_iso) {
+  function db_update_employee(id, name, join_iso, term_iso, emp_type, department, level) {
     const all = _loadEmployees();
     const emp = all.find(e => e.id === id && !e.deleted_at);
     if (!emp) return false;
+    const dept = department || "Administrative";
     emp.name = name;
     emp.join_date = join_iso;
     emp.term_date = term_iso || null;
+    emp.emp_type = emp_type || "Full-time";
+    emp.department = dept;
+    emp.level = dept === "Teaching" ? (level || "Primary") : null;
     emp.updated_at = _now();
     _saveEmployees(all);
     return true;
@@ -587,17 +609,62 @@
     for (let i = 0; i < name.length; i++) {
       if (name.charCodeAt(i) < 32) throw new ApiError("Name contains characters that aren't allowed.", "name");
     }
+
+    // Employment Type: Full-time or Part-time
+    let emp_type = (payload.emp_type || "Full-time").trim();
+    emp_type = /part/i.test(emp_type) ? "Part-time" : "Full-time";
+
+    // Department: Administrative, Teaching, Non-Teaching
+    let department = (payload.department || "Administrative").trim();
+    const dLower = department.toLowerCase();
+    if (dLower.includes("teach") && !dLower.includes("non")) {
+      department = "Teaching";
+    } else if (dLower.includes("non")) {
+      department = "Non-Teaching";
+    } else {
+      department = "Administrative";
+    }
+
+    // Level: Pre Primary, Primary, Lower Secondary, Secondary (only if Teaching)
+    let level = null;
+    if (department === "Teaching") {
+      const lLower = (payload.level || "").trim().toLowerCase();
+      if (lLower.includes("pre")) level = "Pre Primary";
+      else if (lLower.includes("lower")) level = "Lower Secondary";
+      else if (lLower.includes("secondary") || lLower.includes("sec")) level = "Secondary";
+      else level = "Primary";
+    }
+
     const join = parse_date_field(payload.join, "join", "Joining date", true);
     const term = parse_date_field(payload.term, "term", "Termination date", false);
     if (term !== null && dateLt(term, join)) {
       throw new ApiError("Termination date can't be before the joining date.", "term");
     }
-    return { name, join_iso: isoDate(join), term_iso: term ? isoDate(term) : null };
+    return {
+      name,
+      emp_type,
+      department,
+      level,
+      join_iso: isoDate(join),
+      term_iso: term ? isoDate(term) : null
+    };
   }
 
   // ============================================================
-  //  EXPORT MODULE (CSV export, ported from export.py)
+  //  EXPORT MODULE (CSV export with customizable columns)
   // ============================================================
+
+  const ALL_FIELDS_META = [
+    { id: "sn", label: "S.N." },
+    { id: "name", label: "Name" },
+    { id: "emp_type", label: "Employment Type" },
+    { id: "department", label: "Department" },
+    { id: "level", label: "Teaching Level" },
+    { id: "join", label: "Date of Appointment" },
+    { id: "served", label: "Service Time" },
+    { id: "term", label: "Date of Termination" },
+    { id: "status", label: "Status" },
+  ];
 
   function formatServiceTimeExport(tenure, serviceUnit) {
     if (!tenure) return "Not started";
@@ -625,8 +692,13 @@
     return str;
   }
 
-  function buildCSV(views, cal, serviceUnit) {
-    const headers = ["S.N.", "Name", "Date of Appointment", "Service Time", "Date of Termination", "Status"];
+  function buildCSV(views, cal, serviceUnit, selectedFields) {
+    const activeFieldIds = (selectedFields && selectedFields.length > 0)
+      ? selectedFields
+      : ALL_FIELDS_META.map(f => f.id);
+    const activeFields = ALL_FIELDS_META.filter(f => activeFieldIds.includes(f.id));
+
+    const headers = activeFields.map(f => f.label);
     const rows = [headers.map(escapeCSV).join(",")];
 
     views.forEach((v, i) => {
@@ -634,15 +706,27 @@
       const term = v.term ? parseISODate(v.term.iso) : null;
       let joinStr, termStr;
       if (cal === "bs") {
-        joinStr = iso_bs(join);
-        termStr = term ? iso_bs(term) : "";
+        joinStr = format_date("bs", join);
+        termStr = term ? format_date("bs", term) : "";
       } else {
-        joinStr = v.join.iso;
-        termStr = term ? v.term.iso : "";
+        joinStr = format_date("ad", join);
+        termStr = term ? format_date("ad", term) : "";
       }
       const serviceStr = formatServiceTimeExport(v.tenure, serviceUnit);
       const statusStr = v.status_label || "";
-      const row = [i + 1, v.name, joinStr, serviceStr, termStr, statusStr];
+
+      const row = activeFields.map(f => {
+        if (f.id === "sn") return i + 1;
+        if (f.id === "name") return v.name;
+        if (f.id === "emp_type") return v.emp_type || "Full-time";
+        if (f.id === "department") return v.department || "Administrative";
+        if (f.id === "level") return v.level || "";
+        if (f.id === "join") return joinStr;
+        if (f.id === "served") return serviceStr;
+        if (f.id === "term") return termStr;
+        if (f.id === "status") return statusStr;
+        return "";
+      });
       rows.push(row.map(escapeCSV).join(","));
     });
 
@@ -650,14 +734,14 @@
   }
 
   function downloadCSV(views, cal, serviceUnit) {
-    const csv = buildCSV(views, cal, serviceUnit);
+    const csv = buildCSV(views, cal, serviceUnit, S.exportFields);
     const bom = "\uFEFF";
     const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const today = isoDate(todayDate());
     const a = document.createElement("a");
     a.href = url;
-    a.download = "employees-" + today + ".csv";
+    a.download = "staff-records-" + today + ".csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -691,6 +775,15 @@
   const storeUtil = {
     get(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignored */ } },
+    getJSON(k, d) {
+      try {
+        const val = localStorage.getItem(k);
+        return val ? JSON.parse(val) : d;
+      } catch (e) { return d; }
+    },
+    setJSON(k, v) {
+      try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignored */ }
+    }
   };
 
   const localISO = () => {
@@ -721,10 +814,15 @@
   //  APP STATE
   // ============================================================
 
+  const DEFAULT_FIELDS = ["sn", "name", "emp_type", "department", "level", "join", "served", "term", "status"];
+
   const S = {
     cal: storeUtil.get("cal", "bs") === "ad" ? "ad" : "bs",
     activeTab: storeUtil.get("activeTab", "dashboard"),
     serviceUnit: storeUtil.get("serviceUnit", "full"),
+    dateFormat: storeUtil.get("dateFormat", "verbal"),
+    exportFields: storeUtil.getJSON("exportFields", DEFAULT_FIELDS),
+    printFields: storeUtil.getJSON("printFields", DEFAULT_FIELDS),
     data: null,
     calendar: S_calendar,
     filter: storeUtil.get("filter", "all"),
@@ -754,12 +852,89 @@
     if (valLabel) valLabel.textContent = textSize + "px";
 
     syncSettingButtons();
+    renderExportFieldsList();
+    renderPrintFieldsList();
+    updatePrintStyles();
+  }
+
+  function updatePrintStyles() {
+    let styleEl = document.getElementById("print-fields-style");
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = "print-fields-style";
+      document.head.appendChild(styleEl);
+    }
+    const disabled = ALL_FIELDS_META.map(f => f.id).filter(f => !S.printFields.includes(f));
+    if (disabled.length === 0) {
+      styleEl.textContent = "";
+    } else {
+      const selectors = disabled.map(f => `.notion-tbl .col-${f}`).join(", ");
+      styleEl.textContent = `@media print { ${selectors} { display: none !important; } }`;
+    }
+  }
+
+  function renderExportFieldsList() {
+    const container = $("#exportFieldsList");
+    if (!container) return;
+    container.replaceChildren();
+    ALL_FIELDS_META.forEach(f => {
+      const isChecked = S.exportFields.includes(f.id);
+      const input = h("input", {
+        type: "checkbox",
+        id: `chk-export-${f.id}`,
+        value: f.id,
+        onchange: (e) => {
+          if (e.target.checked) {
+            if (!S.exportFields.includes(f.id)) S.exportFields.push(f.id);
+          } else {
+            S.exportFields = S.exportFields.filter(x => x !== f.id);
+          }
+          storeUtil.setJSON("exportFields", S.exportFields);
+        }
+      });
+      if (isChecked) input.checked = true;
+      const label = h("label", { class: "field-checkbox-item", for: `chk-export-${f.id}` },
+        input,
+        h("span", {}, f.label)
+      );
+      container.append(label);
+    });
+  }
+
+  function renderPrintFieldsList() {
+    const container = $("#printFieldsList");
+    if (!container) return;
+    container.replaceChildren();
+    ALL_FIELDS_META.forEach(f => {
+      const isChecked = S.printFields.includes(f.id);
+      const input = h("input", {
+        type: "checkbox",
+        id: `chk-print-${f.id}`,
+        value: f.id,
+        onchange: (e) => {
+          if (e.target.checked) {
+            if (!S.printFields.includes(f.id)) S.printFields.push(f.id);
+          } else {
+            S.printFields = S.printFields.filter(x => x !== f.id);
+          }
+          storeUtil.setJSON("printFields", S.printFields);
+          updatePrintStyles();
+        }
+      });
+      if (isChecked) input.checked = true;
+      const label = h("label", { class: "field-checkbox-item", for: `chk-print-${f.id}` },
+        input,
+        h("span", {}, f.label)
+      );
+      container.append(label);
+    });
   }
 
   function syncSettingButtons() {
     const theme = document.body.dataset.theme || "default";
     const font = document.body.dataset.font || "sans";
     const serviceUnit = S.serviceUnit;
+    const dateFormat = S.dateFormat;
 
     $$("#themeOptions .theme-btn").forEach(btn => {
       btn.setAttribute("aria-pressed", btn.dataset.theme === theme ? "true" : "false");
@@ -769,6 +944,9 @@
     });
     $$("#serviceFormatOptions .chip-btn").forEach(btn => {
       btn.setAttribute("aria-pressed", btn.dataset.serviceUnit === serviceUnit ? "true" : "false");
+    });
+    $$("#dateFormatOptions .chip-btn").forEach(btn => {
+      btn.setAttribute("aria-pressed", btn.dataset.dateFormat === dateFormat ? "true" : "false");
     });
   }
 
@@ -802,6 +980,51 @@
       render();
     });
   });
+
+  // Date format options
+  $$("#dateFormatOptions .chip-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const fmt = btn.dataset.dateFormat;
+      S.dateFormat = fmt;
+      storeUtil.set("dateFormat", fmt);
+      syncSettingButtons();
+      refresh();
+      toast(`Date format set to ${btn.textContent.trim()}.`);
+    });
+  });
+
+  // Export fields Toggle All
+  const expToggleBtn = $("#exportFieldsToggleAll");
+  if (expToggleBtn) {
+    expToggleBtn.addEventListener("click", () => {
+      if (S.exportFields.length === ALL_FIELDS_META.length) {
+        S.exportFields = ["name"];
+        expToggleBtn.textContent = "Select All";
+      } else {
+        S.exportFields = ALL_FIELDS_META.map(f => f.id);
+        expToggleBtn.textContent = "Deselect All";
+      }
+      storeUtil.setJSON("exportFields", S.exportFields);
+      renderExportFieldsList();
+    });
+  }
+
+  // Print fields Toggle All
+  const prtToggleBtn = $("#printFieldsToggleAll");
+  if (prtToggleBtn) {
+    prtToggleBtn.addEventListener("click", () => {
+      if (S.printFields.length === ALL_FIELDS_META.length) {
+        S.printFields = ["name"];
+        prtToggleBtn.textContent = "Select All";
+      } else {
+        S.printFields = ALL_FIELDS_META.map(f => f.id);
+        prtToggleBtn.textContent = "Deselect All";
+      }
+      storeUtil.setJSON("printFields", S.printFields);
+      renderPrintFieldsList();
+      updatePrintStyles();
+    });
+  }
 
   // Text size slider
   const sizeSlider = $("#textSizeSlider");
@@ -862,6 +1085,7 @@
     $("#view-dashboard").hidden = tabName !== "dashboard";
     $("#view-directory").hidden = tabName !== "directory";
     $("#view-excel").hidden = tabName !== "excel";
+    $("#view-search").hidden = tabName !== "search";
 
     render();
   }
@@ -869,6 +1093,7 @@
   $("#tab-dashboard").addEventListener("click", () => switchTab("dashboard"));
   $("#tab-directory").addEventListener("click", () => switchTab("directory"));
   $("#tab-excel").addEventListener("click", () => switchTab("excel"));
+  $("#tab-search").addEventListener("click", () => switchTab("search"));
 
   const dashGoDir = $("#dashGoDirectory");
   if (dashGoDir) dashGoDir.addEventListener("click", () => switchTab("directory"));
@@ -961,16 +1186,34 @@
 
   function sortValue(e, key) {
     if (key === "name") return e.name.toLocaleLowerCase();
+    if (key === "emp_type") return (e.emp_type || "").toLocaleLowerCase();
+    if (key === "department") return (e.department || "").toLocaleLowerCase();
+    if (key === "level") return (e.level || "").toLocaleLowerCase();
     if (key === "join") return e.join.iso;
     if (key === "term") return e.term ? e.term.iso : null;
     if (key === "served") return e.tenure ? e.tenure.total_days : null;
+    if (key === "status") return e.status;
     return null;
   }
 
   function visibleRows() {
     if (!S.data || !S.data.employees) return [];
     const q = S.q.trim().toLocaleLowerCase();
-    const rows = S.data.employees.filter(e => matchesFilter(e) && (!q || e.name.toLocaleLowerCase().includes(q)));
+    const rows = S.data.employees.filter(e => {
+      if (!matchesFilter(e)) return false;
+      if (!q) return true;
+      return (
+        e.name.toLocaleLowerCase().includes(q) ||
+        (e.emp_type && e.emp_type.toLocaleLowerCase().includes(q)) ||
+        (e.department && e.department.toLocaleLowerCase().includes(q)) ||
+        (e.level && e.level.toLocaleLowerCase().includes(q)) ||
+        (e.status_label && e.status_label.toLocaleLowerCase().includes(q))
+      );
+    });
+    return sortRows(rows);
+  }
+
+  function sortRows(rows) {
     const { key, dir } = S.sort;
     rows.sort((a, b) => {
       const va = sortValue(a, key), vb = sortValue(b, key);
@@ -1114,7 +1357,7 @@
       });
 
       const titleEl = svgEl("title");
-      titleEl.textContent = `${item.label}: ${item.count} staff (${pct}%)`;
+      titleEl.textContent = `${item.label}: ${item.count} staff (${pct}%)` + (item.detail ? ` - ${item.detail}` : "");
       group.appendChild(titleEl);
 
       // Hit area target
@@ -1129,7 +1372,18 @@
       group.appendChild(target);
 
       // Vertical Bar Rect
-      if (item.count > 0) {
+      if (item.count > 0 && item.segments) {
+        let yCur = plotBottom;
+        const segs = item.segments.filter(s => s.count > 0);
+        segs.forEach((s, i) => {
+          const sh = Math.max(Math.round((s.count / yMax) * plotHeight), 3);
+          yCur -= sh;
+          group.appendChild(svgEl("rect", {
+            x: barX, y: yCur, width: barWidth, height: sh,
+            rx: i === segs.length - 1 ? "4" : "0", class: `v-bar-rect ${s.cls}`
+          }));
+        });
+      } else if (item.count > 0) {
         const bar = svgEl("rect", {
           x: barX,
           y: barY,
@@ -1247,21 +1501,28 @@
     }
 
     const buckets = [
-      { label: "< 1 Yr", minDays: 0, maxDays: 365, count: 0, rectClass: "v-bar-rect--tenure" },
-      { label: "1–3 Yrs", minDays: 365, maxDays: 1095, count: 0, rectClass: "v-bar-rect--tenure" },
-      { label: "3–5 Yrs", minDays: 1095, maxDays: 1826, count: 0, rectClass: "v-bar-rect--tenure" },
-      { label: "5–10 Yrs", minDays: 1826, maxDays: 3652, count: 0, rectClass: "v-bar-rect--tenure" },
-      { label: "10+ Yrs", minDays: 3652, maxDays: Infinity, count: 0, rectClass: "v-bar-rect--tenure" },
-    ];
+      { label: "< 1 Yr", minDays: 0, maxDays: 365 },
+      { label: "1-3 Yrs", minDays: 365, maxDays: 1096 },
+      { label: "3-5 Yrs", minDays: 1096, maxDays: 1826 },
+      { label: "5-10 Yrs", minDays: 1826, maxDays: 3652 },
+      { label: "10-20 Yrs", minDays: 3652, maxDays: 7305 },
+      { label: "20+ Yrs", minDays: 7305, maxDays: Infinity },
+    ].map(b => ({ ...b, count: 0, full: 0, part: 0, rectClass: "v-bar-rect--tenure" }));
 
     activeStaff.forEach(e => {
       const days = e.tenure ? e.tenure.total_days : 0;
+      const isPart = (e.emp_type || "").toLowerCase().startsWith("part");
       for (const b of buckets) {
         if (days >= b.minDays && days < b.maxDays) {
           b.count++;
+          if (isPart) b.part++; else b.full++;
           break;
         }
       }
+    });
+    buckets.forEach(b => {
+      b.segments = [{ count: b.full, cls: "v-bar-rect--full" }, { count: b.part, cls: "v-bar-rect--part" }];
+      b.detail = `Full-time ${b.full}, Part-time ${b.part}`;
     });
 
     const chart = createVerticalBarChartSvg({
@@ -1275,6 +1536,10 @@
     });
 
     tenureContainer.appendChild(chart);
+    tenureContainer.appendChild(h("div", { class: "chart-legend" },
+      h("span", { class: "chart-legend__item" }, h("i", { class: "chart-legend__dot chart-legend__dot--full" }), "Full-time"),
+      h("span", { class: "chart-legend__item" }, h("i", { class: "chart-legend__dot chart-legend__dot--part" }), "Part-time")
+    ));
   }
 
   function renderDashboard() {
@@ -1368,50 +1633,91 @@
     }
   }
 
-  function th_el(label, key, isNum) {
-    const thEl = h("th", { scope: "col", class: isNum ? "th-num" : "" });
+  function levelKey(l) {
+    const s = (l || "").toLowerCase();
+    if (s.includes("pre")) return "pre";
+    if (s.includes("lower")) return "lower";
+    if (s.includes("sec")) return "sec";
+    return "pri";
+  }
+
+  function th_el(label, key, isNum, colId) {
+    const cid = colId || key || "";
+    const thEl = h("th", {
+      scope: "col",
+      class: (isNum ? "th-num " : "") + (cid ? `col-${cid}` : "")
+    });
     if (!key) {
       thEl.textContent = label;
       return thEl;
     }
     const active = S.sort.key === key;
     thEl.setAttribute("aria-sort", active ? (S.sort.dir === 1 ? "ascending" : "descending") : "none");
+
+    const dirNow = active ? S.sort.dir : 0;
+    const iconSvg = svgEl("svg", { viewBox: "0 0 10 14", width: "8", height: "11", "aria-hidden": "true" });
+    iconSvg.appendChild(svgEl("path", { d: "M5 1 L9 5.5 H1 Z", class: dirNow === 1 ? "on" : "" }));
+    iconSvg.appendChild(svgEl("path", { d: "M5 13 L1 8.5 H9 Z", class: dirNow === -1 ? "on" : "" }));
+    const arrowEl = h("span", {
+      class: "th-sort-icon" + (active ? " is-active" : ""),
+      title: active ? (S.sort.dir === 1 ? "Sorted ascending" : "Sorted descending") : "Click to sort"
+    }, iconSvg);
+
     const btn = h("button", {
       class: "th-sort-btn", type: "button",
+      title: `Sort by ${label}`,
       onclick: () => {
         S.sort = { key, dir: active ? -S.sort.dir : 1 };
         render();
       },
-    }, label);
+    }, label, arrowEl);
+
     thEl.append(btn);
     return thEl;
   }
 
   function renderRow(e, index) {
     const [skey, slabel] = displayStatus(e);
+    const dept = e.department || "Administrative";
+    const deptKey = dept.toLowerCase().includes("teach") && !dept.toLowerCase().includes("non") ? "teach" : (dept.toLowerCase().includes("non") ? "nonteach" : "admin");
 
     const tr = h("tr", { "data-id": e.id },
       // S.N.
-      h("td", { class: "cell-sno" }, String(index + 1)),
+      h("td", { class: "cell-sno col-sn" }, String(index + 1)),
 
       // Name
-      h("td", { class: "cell-name" },
+      h("td", { class: "cell-name col-name" },
         h("span", { class: "cell-name-text", text: e.name })
       ),
 
+      // Type (Full-time / Part-time)
+      h("td", { class: "cell-type col-emp_type" },
+        h("span", { class: "badge badge--type", text: e.emp_type || "Full-time" })
+      ),
+
+      // Department
+      h("td", { class: "cell-dept col-department" },
+        h("span", { class: `badge badge--dept badge--dept-${deptKey}`, text: dept })
+      ),
+
+      // Teaching Level
+      h("td", { class: "cell-level col-level" },
+        e.level ? h("span", { class: "badge badge--level badge--level-" + levelKey(e.level), text: e.level }) : h("span", { class: "cell-muted" }, "-")
+      ),
+
       // Date of Appointment
-      h("td", { class: "cell-date" },
+      h("td", { class: "cell-date col-join" },
         h("span", { class: "cell-date-main" }, e.join.label),
         e.since_join ? h("span", { class: "cell-date-sub" }, e.since_join.text) : null
       ),
 
       // Service Time
-      h("td", { class: "cell-service" },
+      h("td", { class: "cell-service col-served" },
         h("span", { class: "cell-date-main" }, formatServiceTime(e.tenure))
       ),
 
       // Date of Termination
-      h("td", { class: "cell-date" },
+      h("td", { class: "cell-date col-term" },
         e.term ? [
           h("span", { class: "cell-date-main" }, e.term.label),
           e.until_term ? h("span", { class: "cell-date-sub " + (e.ending_soon ? "is-soon" : "") }, e.until_term.text) : null
@@ -1419,7 +1725,7 @@
       ),
 
       // Status
-      h("td", { class: "cell-status" },
+      h("td", { class: "cell-status col-status" },
         h("span", { class: `notion-tag notion-tag--${skey}`, text: slabel })
       ),
 
@@ -1440,6 +1746,36 @@
       )
     );
     return tr;
+  }
+
+  function buildStaffTable(rows) {
+    return h("table", { class: "notion-tbl" },
+      h("colgroup", {}, [
+        h("col", { class: "col-sn", style: "width: 44px" }),
+        h("col", { class: "col-name", style: "width: 19%" }),
+        h("col", { class: "col-emp_type", style: "width: 10%" }),
+        h("col", { class: "col-department", style: "width: 12%" }),
+        h("col", { class: "col-level", style: "width: 11%" }),
+        h("col", { class: "col-join", style: "width: 13%" }),
+        h("col", { class: "col-served", style: "width: 13%" }),
+        h("col", { class: "col-term", style: "width: 13%" }),
+        h("col", { class: "col-status", style: "width: 9%" }),
+        h("col", { class: "th-actions", style: "width: 110px" }),
+      ]),
+      h("thead", {}, h("tr", {},
+        th_el("S.N.", null, true, "sn"),
+        th_el("Name", "name", false, "name"),
+        th_el("Type", "emp_type", false, "emp_type"),
+        th_el("Department", "department", false, "department"),
+        th_el("Level", "level", false, "level"),
+        th_el("Date of Appointment", "join", false, "join"),
+        th_el("Service Time", "served", false, "served"),
+        th_el("Date of Termination", "term", false, "term"),
+        th_el("Status", "status", false, "status"),
+        h("th", { class: "th-actions", scope: "col" }, "")
+      )),
+      h("tbody", {}, rows.map((e, idx) => renderRow(e, idx)))
+    );
   }
 
   function renderSheet(highlightId) {
@@ -1481,27 +1817,7 @@
       return;
     }
 
-    const table = h("table", { class: "notion-tbl" },
-      h("colgroup", {}, [
-        h("col", { style: "width: 50px" }),  // S.N.
-        h("col", { style: "width: 25%" }),   // Name
-        h("col", { style: "width: 18%" }),   // Date of Appointment
-        h("col", { style: "width: 17%" }),   // Service Time
-        h("col", { style: "width: 18%" }),   // Date of Termination
-        h("col", { style: "width: 12%" }),   // Status
-        h("col", { class: "th-actions", style: "width: 120px" }),   // Actions
-      ]),
-      h("thead", {}, h("tr", {},
-        th_el("S.N.", null, true),
-        th_el("Name", "name"),
-        th_el("Date of Appointment", "join"),
-        th_el("Service Time", "served"),
-        th_el("Date of Termination", "term"),
-        th_el("Status", null),
-        h("th", { class: "th-actions", scope: "col" }, "")
-      )),
-      h("tbody", {}, rows.map((e, idx) => renderRow(e, idx)))
-    );
+    const table = buildStaffTable(rows);
 
     sheet.append(table);
 
@@ -1575,13 +1891,16 @@
 
     const table = h("table", { class: "excel-grid-tbl" },
       h("colgroup", {}, [
-        h("col", { style: "width: 44px" }),  // Row #
-        h("col", { style: "width: 54px" }),  // A: S.N.
-        h("col", { style: "width: 26%" }),   // B: Name
-        h("col", { style: "width: 20%" }),   // C: Date of Appointment
-        h("col", { style: "width: 18%" }),   // D: Service Time
-        h("col", { style: "width: 20%" }),   // E: Date of Termination
-        h("col", { style: "width: 12%" }),   // F: Status
+        h("col", { style: "width: 40px" }),  // Row #
+        h("col", { style: "width: 48px" }),  // A: S.N.
+        h("col", { style: "width: 20%" }),   // B: Name
+        h("col", { style: "width: 10%" }),   // C: Type
+        h("col", { style: "width: 13%" }),   // D: Dept
+        h("col", { style: "width: 11%" }),   // E: Level
+        h("col", { style: "width: 15%" }),   // F: Date of Appointment
+        h("col", { style: "width: 13%" }),   // G: Service Time
+        h("col", { style: "width: 15%" }),   // H: Date of Termination
+        h("col", { style: "width: 9%" }),    // I: Status
       ]),
       h("thead", {},
         // Column Letters
@@ -1592,13 +1911,19 @@
           h("th", {}, "C"),
           h("th", {}, "D"),
           h("th", {}, "E"),
-          h("th", {}, "F")
+          h("th", {}, "F"),
+          h("th", {}, "G"),
+          h("th", {}, "H"),
+          h("th", {}, "I")
         ),
         // Column Headers
         h("tr", {},
           h("th", { class: "excel-row-num" }, "1"),
           h("th", {}, "S.N."),
           h("th", {}, "Name"),
+          h("th", {}, "Type"),
+          h("th", {}, "Department"),
+          h("th", {}, "Level"),
           h("th", {}, "Date of Appointment"),
           h("th", {}, "Service Time"),
           h("th", {}, "Date of Termination"),
@@ -1609,7 +1934,7 @@
         const rowNum = idx + 2;
         const [_, slabel] = displayStatus(e);
 
-        // Editable cells: Name (col B), Date of Appt (col C), Date of Term (col E)
+        // Editable cells
         const cellB = h("td", {
           class: "excel-cell-editable",
           contenteditable: "true",
@@ -1622,30 +1947,69 @@
           onkeydown: (ev) => onExcelCellKeyDown(ev, cellB)
         }, e.name);
 
-        const joinVal = e.join[S.cal] ? `${e.join[S.cal].y}-${String(e.join[S.cal].m).padStart(2, "0")}-${String(e.join[S.cal].d).padStart(2, "0")}` : e.join.iso;
+        const typeVal = e.emp_type || "Full-time";
         const cellC = h("td", {
           class: "excel-cell-editable",
           contenteditable: "true",
           spellcheck: "false",
           "data-coord": `C${rowNum}`,
           "data-id": e.id,
-          "data-field": "join",
-          onfocus: () => selectExcelCell(`C${rowNum}`, joinVal, cellC),
-          onblur: () => onExcelCellBlur(cellC, e, "join"),
+          "data-field": "emp_type",
+          onfocus: () => selectExcelCell(`C${rowNum}`, typeVal, cellC),
+          onblur: () => onExcelCellBlur(cellC, e, "emp_type"),
           onkeydown: (ev) => onExcelCellKeyDown(ev, cellC)
-        }, joinVal);
+        }, typeVal);
 
-        const termVal = e.term ? (e.term[S.cal] ? `${e.term[S.cal].y}-${String(e.term[S.cal].m).padStart(2, "0")}-${String(e.term[S.cal].d).padStart(2, "0")}` : e.term.iso) : "";
+        const deptVal = e.department || "Administrative";
+        const cellD = h("td", {
+          class: "excel-cell-editable",
+          contenteditable: "true",
+          spellcheck: "false",
+          "data-coord": `D${rowNum}`,
+          "data-id": e.id,
+          "data-field": "department",
+          onfocus: () => selectExcelCell(`D${rowNum}`, deptVal, cellD),
+          onblur: () => onExcelCellBlur(cellD, e, "department"),
+          onkeydown: (ev) => onExcelCellKeyDown(ev, cellD)
+        }, deptVal);
+
+        const levelVal = e.level || "";
         const cellE = h("td", {
           class: "excel-cell-editable",
           contenteditable: "true",
           spellcheck: "false",
           "data-coord": `E${rowNum}`,
           "data-id": e.id,
-          "data-field": "term",
-          onfocus: () => selectExcelCell(`E${rowNum}`, termVal, cellE),
-          onblur: () => onExcelCellBlur(cellE, e, "term"),
+          "data-field": "level",
+          onfocus: () => selectExcelCell(`E${rowNum}`, levelVal, cellE),
+          onblur: () => onExcelCellBlur(cellE, e, "level"),
           onkeydown: (ev) => onExcelCellKeyDown(ev, cellE)
+        }, levelVal);
+
+        const joinVal = e.join[S.cal] ? `${e.join[S.cal].y}-${String(e.join[S.cal].m).padStart(2, "0")}-${String(e.join[S.cal].d).padStart(2, "0")}` : e.join.iso;
+        const cellF = h("td", {
+          class: "excel-cell-editable",
+          contenteditable: "true",
+          spellcheck: "false",
+          "data-coord": `F${rowNum}`,
+          "data-id": e.id,
+          "data-field": "join",
+          onfocus: () => selectExcelCell(`F${rowNum}`, joinVal, cellF),
+          onblur: () => onExcelCellBlur(cellF, e, "join"),
+          onkeydown: (ev) => onExcelCellKeyDown(ev, cellF)
+        }, joinVal);
+
+        const termVal = e.term ? (e.term[S.cal] ? `${e.term[S.cal].y}-${String(e.term[S.cal].m).padStart(2, "0")}-${String(e.term[S.cal].d).padStart(2, "0")}` : e.term.iso) : "";
+        const cellH = h("td", {
+          class: "excel-cell-editable",
+          contenteditable: "true",
+          spellcheck: "false",
+          "data-coord": `H${rowNum}`,
+          "data-id": e.id,
+          "data-field": "term",
+          onfocus: () => selectExcelCell(`H${rowNum}`, termVal, cellH),
+          onblur: () => onExcelCellBlur(cellH, e, "term"),
+          onkeydown: (ev) => onExcelCellKeyDown(ev, cellH)
         }, termVal);
 
         return h("tr", {},
@@ -1653,8 +2017,11 @@
           h("td", { class: "excel-cell-readonly", style: "text-align: center;" }, String(idx + 1)),
           cellB,
           cellC,
-          h("td", { class: "excel-cell-readonly" }, formatServiceTime(e.tenure)),
+          cellD,
           cellE,
+          cellF,
+          h("td", { class: "excel-cell-readonly" }, formatServiceTime(e.tenure)),
+          cellH,
           h("td", { class: "excel-cell-readonly" }, slabel)
         );
       }))
@@ -1687,32 +2054,39 @@
     const statusTag = $("#excelSaveStatus");
 
     try {
-      if (field === "name") {
-        if (!rawVal) {
-          cell.textContent = emp.name;
-          return;
+      if (field === "name" || field === "emp_type" || field === "department" || field === "level") {
+        if (field === "name") {
+          if (!rawVal) {
+            cell.textContent = emp.name;
+            return;
+          }
+          if (rawVal === emp.name) return;
         }
-        if (rawVal === emp.name) return;
 
         statusTag.textContent = "Saving...";
-        // Build body for update
         const body = {
-          name: rawVal,
+          name: field === "name" ? rawVal : emp.name,
+          emp_type: field === "emp_type" ? rawVal : (emp.emp_type || "Full-time"),
+          department: field === "department" ? rawVal : (emp.department || "Administrative"),
+          level: field === "level" ? rawVal : (emp.level || null),
           join: emp.join[S.cal] ? { cal: S.cal, ...emp.join[S.cal] } : { cal: "ad", y: emp.join.ad.y, m: emp.join.ad.m, d: emp.join.ad.d },
           term: emp.term ? (emp.term[S.cal] ? { cal: S.cal, ...emp.term[S.cal] } : { cal: "ad", y: emp.term.ad.y, m: emp.term.ad.m, d: emp.term.ad.d }) : null
         };
         const parsed = parse_employee(body);
-        db_update_employee(emp.id, parsed.name, parsed.join_iso, parsed.term_iso);
+        db_update_employee(emp.id, parsed.name, parsed.join_iso, parsed.term_iso, parsed.emp_type, parsed.department, parsed.level);
       } else if (field === "join" || field === "term") {
         if (field === "term" && !rawVal) {
           statusTag.textContent = "Saving...";
           const body = {
             name: emp.name,
+            emp_type: emp.emp_type || "Full-time",
+            department: emp.department || "Administrative",
+            level: emp.level || null,
             join: emp.join[S.cal] ? { cal: S.cal, ...emp.join[S.cal] } : { cal: "ad", y: emp.join.ad.y, m: emp.join.ad.m, d: emp.join.ad.d },
             term: null
           };
           const parsed = parse_employee(body);
-          db_update_employee(emp.id, parsed.name, parsed.join_iso, parsed.term_iso);
+          db_update_employee(emp.id, parsed.name, parsed.join_iso, parsed.term_iso, parsed.emp_type, parsed.department, parsed.level);
         } else {
           const parsedDate = parseAnyDate(rawVal, S.cal);
           if (!parsedDate) {
@@ -1724,11 +2098,14 @@
           statusTag.textContent = "Saving...";
           const body = {
             name: emp.name,
+            emp_type: emp.emp_type || "Full-time",
+            department: emp.department || "Administrative",
+            level: emp.level || null,
             join: field === "join" ? { cal: S.cal, ...parsedDate } : (emp.join[S.cal] ? { cal: S.cal, ...emp.join[S.cal] } : { cal: "ad", y: emp.join.ad.y, m: emp.join.ad.m, d: emp.join.ad.d }),
             term: field === "term" ? { cal: S.cal, ...parsedDate } : (emp.term ? (emp.term[S.cal] ? { cal: S.cal, ...emp.term[S.cal] } : { cal: "ad", y: emp.term.ad.y, m: emp.term.ad.m, d: emp.term.ad.d }) : null)
           };
           const parsed = parse_employee(body);
-          db_update_employee(emp.id, parsed.name, parsed.join_iso, parsed.term_iso);
+          db_update_employee(emp.id, parsed.name, parsed.join_iso, parsed.term_iso, parsed.emp_type, parsed.department, parsed.level);
         }
       }
 
@@ -1760,6 +2137,8 @@
       renderSheet(highlightId);
     } else if (S.activeTab === "excel") {
       renderMiniExcel();
+    } else if (S.activeTab === "search") {
+      renderSearch();
     }
 
     renderFoot();
@@ -1813,12 +2192,119 @@
 
 
   // ============================================================
+  //  ADVANCED SEARCH
+  // ============================================================
+  const ADV = { q: "", min: "", max: "", type: "", dept: "", level: "", status: "" };
+  const ADV_PRESETS = [["< 1 yr", "0", "1"], ["1-3 yrs", "1", "3"], ["3-5 yrs", "3", "5"],
+                       ["5-10 yrs", "5", "10"], ["10-20 yrs", "10", "20"], ["20+ yrs", "20", ""]];
+  const ADV_IDS = { advName: "q", advMin: "min", advMax: "max", advType: "type", advDept: "dept", advLevel: "level", advStatus: "status" };
+  let _advBound = false;
+
+  function advRows() {
+    const q = ADV.q.trim().toLocaleLowerCase();
+    const min = ADV.min === "" ? null : parseFloat(ADV.min);
+    const max = ADV.max === "" ? null : parseFloat(ADV.max);
+    const rows = ((S.data && S.data.employees) || []).filter(e => {
+      if (q && !e.name.toLocaleLowerCase().includes(q)) return false;
+      if (ADV.type && (e.emp_type || "Full-time") !== ADV.type) return false;
+      if (ADV.dept && (e.department || "Administrative") !== ADV.dept) return false;
+      if (ADV.level && e.level !== ADV.level) return false;
+      if (ADV.status) {
+        const ok = ADV.status === "active" ? (e.status === "active" || e.status === "ends_today")
+          : ADV.status === "soon" ? !!e.ending_soon : e.status === ADV.status;
+        if (!ok) return false;
+      }
+      if (min !== null || max !== null) {
+        if (!e.tenure) return false;
+        const yrs = e.tenure.total_days / 365.25;
+        if (min !== null && yrs < min) return false;
+        if (max !== null && yrs >= max) return false;
+      }
+      return true;
+    });
+    return sortRows(rows);
+  }
+
+  function advDescribe() {
+    const p = [];
+    if (ADV.min !== "" || ADV.max !== "") {
+      p.push(ADV.max === "" ? `Service ${ADV.min}+ years` : ADV.min === "" ? `Service under ${ADV.max} years` : `Service ${ADV.min} to ${ADV.max} years`);
+    }
+    if (ADV.type) p.push(ADV.type);
+    if (ADV.dept) p.push(ADV.dept);
+    if (ADV.level) p.push(ADV.level);
+    if (ADV.status) p.push("Status: " + ADV.status);
+    if (ADV.q.trim()) p.push(`Name: "${ADV.q.trim()}"`);
+    return p.length ? p.join(" | ") : "All staff";
+  }
+
+  function renderSearch() {
+    if (!_advBound) {
+      _advBound = true;
+      Object.entries(ADV_IDS).forEach(([id, key]) => {
+        const el = $("#" + id);
+        el.addEventListener(el.tagName === "SELECT" ? "change" : "input", () => { ADV[key] = el.value; renderAdvResults(); });
+      });
+      $("#advReset").addEventListener("click", () => {
+        Object.keys(ADV).forEach(k => { ADV[k] = ""; });
+        renderSearch();
+      });
+      $("#printSearchBtn").addEventListener("click", () => printView("search"));
+    }
+    Object.entries(ADV_IDS).forEach(([id, key]) => { $("#" + id).value = ADV[key]; });
+    renderAdvResults();
+  }
+
+  function renderAdvResults() {
+    const rows = advRows();
+    const total = (S.data && S.data.employees) ? S.data.employees.length : 0;
+
+    const presets = $("#advPresets");
+    presets.replaceChildren();
+    ADV_PRESETS.forEach(([label, min, max]) => {
+      const on = ADV.min === min && ADV.max === max;
+      presets.append(h("button", {
+        class: "chip-btn", type: "button", "aria-pressed": on ? "true" : "false",
+        onclick: () => {
+          ADV.min = on ? "" : min; ADV.max = on ? "" : max;
+          $("#advMin").value = ADV.min; $("#advMax").value = ADV.max;
+          renderAdvResults();
+        }
+      }, label));
+    });
+
+    $("#advSummary").textContent = `${rows.length} of ${total} staff match` + (advDescribe() === "All staff" ? "" : "  |  " + advDescribe());
+    $("#printSearchBtn").disabled = rows.length === 0;
+    $("#advPrintHead").replaceChildren(
+      h("h2", { text: "Staff Service Report" }),
+      h("p", { text: `${advDescribe()} (${rows.length} staff)` })
+    );
+
+    const sheet = $("#advSheet");
+    sheet.replaceChildren();
+    if (rows.length === 0) {
+      sheet.append(h("div", { class: "empty-state" },
+        h("p", { class: "empty-state__title", text: "No matching staff" }),
+        h("p", { class: "empty-state__desc", text: "Try widening the service range or clearing a filter." })
+      ));
+    } else {
+      sheet.append(buildStaffTable(rows));
+    }
+  }
+
+  // ============================================================
   //  PRINT & EXPORT
   // ============================================================
 
-  $("#printBtn").addEventListener("click", () => {
+  function printView(mode) {
+    document.body.dataset.print = mode;
     window.print();
+  }
+  $("#printDirBtn").addEventListener("click", () => printView("dir"));
+  window.addEventListener("beforeprint", () => {
+    if (!document.body.dataset.print) document.body.dataset.print = S.activeTab === "search" ? "search" : "dir";
   });
+  window.addEventListener("afterprint", () => { delete document.body.dataset.print; });
 
   // Export as CSV instead of XLSX
   $("#exportBtn").addEventListener("click", () => {
@@ -1959,7 +2445,7 @@
     selectEl.replaceChildren();
     names.forEach((name, idx) => {
       const mNum = idx + 1;
-      selectEl.append(h("option", { value: String(mNum) }, `${mNum} - ${name}`));
+      selectEl.append(h("option", { value: String(mNum) }, name));
     });
     selectEl.value = currentVal;
   }
@@ -2144,6 +2630,18 @@
     $("#f-middle-name").value = middle;
     $("#f-last-name").value = last;
 
+    // Job fields: Type, Department, Level
+    const empTypeSelect = $("#f-emp-type");
+    const deptSelect = $("#f-department");
+    const levelSelect = $("#f-level");
+    const levelField = $("#field-teaching-level");
+
+    if (empTypeSelect) empTypeSelect.value = emp ? (emp.emp_type || "Full-time") : "Full-time";
+    const curDept = emp ? (emp.department || "Teaching") : "Teaching";
+    if (deptSelect) deptSelect.value = curDept;
+    if (levelField) levelField.hidden = curDept !== "Teaching";
+    if (levelSelect) levelSelect.value = emp && emp.level ? emp.level : "Primary";
+
     clearErrors();
 
     loadMonthOptions(groups.join.m, D.cal);
@@ -2168,6 +2666,16 @@
   $("#cancelBtn").addEventListener("click", () => dlg.close());
   $("#dialogCloseX").addEventListener("click", () => dlg.close());
 
+  // Department change toggles teaching level field
+  const deptSelectEl = $("#f-department");
+  const levelFieldEl = $("#field-teaching-level");
+  if (deptSelectEl && levelFieldEl) {
+    deptSelectEl.addEventListener("change", () => {
+      const isTeaching = deptSelectEl.value === "Teaching";
+      levelFieldEl.hidden = !isTeaching;
+    });
+  }
+
   // Form submission
   form.addEventListener("submit", (ev) => {
     ev.preventDefault();
@@ -2183,6 +2691,10 @@
 
     const fullName = [firstName, middleName, lastName].filter(Boolean).join(" ");
 
+    const empType = $("#f-emp-type") ? $("#f-emp-type").value : "Full-time";
+    const department = $("#f-department") ? $("#f-department").value : "Administrative";
+    const level = (department === "Teaching" && $("#f-level")) ? $("#f-level").value : null;
+
     const jp = getGroupParts(groups.join);
     const tp = getGroupParts(groups.term);
 
@@ -2191,6 +2703,9 @@
 
     const body = {
       name: fullName,
+      emp_type: empType,
+      department: department,
+      level: level,
       join: { cal: D.cal, ...jp },
       term: isGroupEmpty(tp) ? null : { cal: D.cal, ...tp },
     };
@@ -2201,11 +2716,11 @@
       const parsed = parse_employee(body);
       let resultId;
       if (D.mode === "edit") {
-        const ok = db_update_employee(D.id, parsed.name, parsed.join_iso, parsed.term_iso);
+        const ok = db_update_employee(D.id, parsed.name, parsed.join_iso, parsed.term_iso, parsed.emp_type, parsed.department, parsed.level);
         if (!ok) throw new ApiError("That employee no longer exists.");
         resultId = D.id;
       } else {
-        resultId = db_add_employee(parsed.name, parsed.join_iso, parsed.term_iso);
+        resultId = db_add_employee(parsed.name, parsed.join_iso, parsed.term_iso, parsed.emp_type, parsed.department, parsed.level);
       }
       dlg.close();
       refresh(resultId);
@@ -2311,15 +2826,17 @@
       templateBtn.addEventListener("click", () => {
         let sampleCsv = "";
         if (currentImportCal === "bs") {
-          sampleCsv = "\uFEFFS.N.,Name,Date of Appointment,Date of Termination\r\n" +
-            "1,Aarav Sharma,2078-04-01,\r\n" +
-            "2,Pooja Shrestha,2079-08-15,2083-08-14\r\n" +
-            "3,Rohan Adhikari,2080-01-10,\r\n";
+          sampleCsv = "\uFEFFS.N.,Name,Employment Type,Department,Teaching Level,Date of Appointment,Date of Termination\r\n" +
+            "1,Aarav Sharma,Full-time,Teaching,Secondary,2078-04-01,\r\n" +
+            "2,Pooja Shrestha,Part-time,Teaching,Primary,2079-08-15,2083-08-14\r\n" +
+            "3,Rohan Adhikari,Full-time,Administrative,,2080-01-10,\r\n" +
+            "4,Sunita Gurung,Full-time,Non-Teaching,,2081-02-05,\r\n";
         } else {
-          sampleCsv = "\uFEFFS.N.,Name,Date of Appointment,Date of Termination\r\n" +
-            "1,Aarav Sharma,2021-07-16,\r\n" +
-            "2,Pooja Shrestha,2022-12-01,2026-11-30\r\n" +
-            "3,Rohan Adhikari,2023-04-24,\r\n";
+          sampleCsv = "\uFEFFS.N.,Name,Employment Type,Department,Teaching Level,Date of Appointment,Date of Termination\r\n" +
+            "1,Aarav Sharma,Full-time,Teaching,Secondary,2021-07-16,\r\n" +
+            "2,Pooja Shrestha,Part-time,Teaching,Primary,2022-12-01,2026-11-30\r\n" +
+            "3,Rohan Adhikari,Full-time,Administrative,,2023-04-24,\r\n" +
+            "4,Sunita Gurung,Full-time,Non-Teaching,,2024-05-18,\r\n";
         }
         const blob = new Blob([sampleCsv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
@@ -2473,6 +2990,9 @@
       const hasHeader = firstRow.some(cell => /(name|employee|staff|appointment|joining)/i.test(cell));
 
       let nameIdx = -1;
+      let typeIdx = -1;
+      let deptIdx = -1;
+      let levelIdx = -1;
       let joinIdx = -1;
       let termIdx = -1;
       let startRow = 0;
@@ -2480,6 +3000,9 @@
       if (hasHeader) {
         startRow = 1;
         nameIdx = firstRow.findIndex(c => /(name|employee|staff)/i.test(c));
+        typeIdx = firstRow.findIndex(c => /(type|employment|timer)/i.test(c));
+        deptIdx = firstRow.findIndex(c => /(department|dept)/i.test(c));
+        levelIdx = firstRow.findIndex(c => /(level|grade|stage)/i.test(c));
         joinIdx = firstRow.findIndex(c => /(appoint|join|start)/i.test(c));
         termIdx = firstRow.findIndex(c => /(terminat|end|leave|expir)/i.test(c));
       }
@@ -2487,14 +3010,39 @@
       // Fallback column positions if unmapped
       if (nameIdx === -1 || joinIdx === -1) {
         const looksLikeSN = /^\d+$/.test((splitRows[startRow] || [])[0] || "");
+        const numCols = (splitRows[startRow] || []).length;
         if (looksLikeSN) {
           nameIdx = 1;
-          joinIdx = 2;
-          termIdx = 3;
+          if (numCols >= 7) {
+            typeIdx = 2;
+            deptIdx = 3;
+            levelIdx = 4;
+            joinIdx = 5;
+            termIdx = 6;
+          } else if (numCols >= 5) {
+            deptIdx = 2;
+            joinIdx = 3;
+            termIdx = 4;
+          } else {
+            joinIdx = 2;
+            termIdx = 3;
+          }
         } else {
           nameIdx = 0;
-          joinIdx = 1;
-          termIdx = 2;
+          if (numCols >= 6) {
+            typeIdx = 1;
+            deptIdx = 2;
+            levelIdx = 3;
+            joinIdx = 4;
+            termIdx = 5;
+          } else if (numCols >= 4) {
+            deptIdx = 1;
+            joinIdx = 2;
+            termIdx = 3;
+          } else {
+            joinIdx = 1;
+            termIdx = 2;
+          }
         }
       }
 
@@ -2507,14 +3055,32 @@
         if (!row || row.every(cell => !cell)) continue;
 
         const name = (row[nameIdx] || "").trim();
+        const rawType = typeIdx >= 0 && row[typeIdx] ? row[typeIdx].trim() : "Full-time";
+        const empType = /part/i.test(rawType) ? "Part-time" : "Full-time";
+
+        const rawDept = deptIdx >= 0 && row[deptIdx] ? row[deptIdx].trim() : "Administrative";
+        let department = "Administrative";
+        if (/teach/i.test(rawDept) && !/non/i.test(rawDept)) department = "Teaching";
+        else if (/non/i.test(rawDept)) department = "Non-Teaching";
+        else department = "Administrative";
+
+        let level = null;
+        if (department === "Teaching") {
+          const rawLvl = levelIdx >= 0 && row[levelIdx] ? row[levelIdx].trim() : "";
+          if (/pre/i.test(rawLvl)) level = "Pre Primary";
+          else if (/lower/i.test(rawLvl)) level = "Lower Secondary";
+          else if (/secondary|sec/i.test(rawLvl)) level = "Secondary";
+          else level = "Primary";
+        }
+
         const joinRaw = (row[joinIdx] || "").trim();
         const termRaw = termIdx >= 0 && row[termIdx] ? row[termIdx].trim() : "";
 
         const errors = [];
         let joinIso = null;
         let termIso = null;
-        let joinDisplay = joinRaw || "—";
-        let termDisplay = termRaw || "—";
+        let joinDisplay = joinRaw || "-";
+        let termDisplay = termRaw || "-";
 
         if (!name) {
           errors.push("Missing name");
@@ -2562,7 +3128,10 @@
 
         parsedRecords.push({
           rowNum: i + 1,
-          name: name || "—",
+          name: name || "-",
+          empType,
+          department,
+          level,
           joinDisplay,
           termDisplay,
           joinIso,
@@ -2592,9 +3161,13 @@
       if (errorCountEl) errorCountEl.textContent = String(errorCount);
 
       previewTbody.replaceChildren(...records.map(rec => {
+        const deptKey = rec.department === "Teaching" ? "teach" : (rec.department === "Non-Teaching" ? "nonteach" : "admin");
         const tr = h("tr", { class: rec.isValid ? "import-row--valid" : "import-row--error" },
           h("td", { style: "text-align: center; color: var(--ink-2); font-variant-numeric: tabular-nums;" }, String(rec.rowNum)),
           h("td", { style: "font-weight: 500;" }, rec.name),
+          h("td", {}, h("span", { class: "badge badge--type", text: rec.empType })),
+          h("td", {}, h("span", { class: `badge badge--dept badge--dept-${deptKey}`, text: rec.department })),
+          h("td", {}, rec.level ? h("span", { class: "badge badge--level badge--level-" + levelKey(rec.level), text: rec.level }) : "-"),
           h("td", {}, rec.joinDisplay),
           h("td", {}, rec.termDisplay),
           h("td", {},
@@ -2628,7 +3201,7 @@
 
         let importedCount = 0;
         for (const row of validRows) {
-          db_add_employee(row.name, row.joinIso, row.termIso);
+          db_add_employee(row.name, row.joinIso, row.termIso, row.empType, row.department, row.level);
           importedCount++;
         }
 
