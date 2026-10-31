@@ -2034,8 +2034,21 @@ td {
 .badge--level-sec {
 	color: #6a4db0;
 }
+.badge--level-eca {
+	color: #c2571a;
+}
+.badge--level-role {
+	color: var(--ink-2);
+}
 .badge--type {
+	padding: 0;
+	background: none;
+	border: 0;
+	border-radius: 0;
 	white-space: normal;
+	font-size: 0.9rem;
+	font-weight: 400;
+	color: var(--ink);
 }
 
 .notion-tbl {
