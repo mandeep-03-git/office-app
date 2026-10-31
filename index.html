@@ -520,7 +520,7 @@
 						<div class="adv-field"><label for="advName">Name contains</label><input class="input" id="advName" type="search" placeholder="Search name..." autocomplete="off" /></div>
 						<div class="adv-field"><label for="advType">Type</label><select class="input" id="advType"><option value="">Any</option><option value="Full-time">Full time</option><option value="Part-time">Part time</option></select></div>
 						<div class="adv-field"><label for="advDept">Department</label><select class="input" id="advDept"><option value="">Any</option><option value="Administrative">Administrative</option><option value="Teaching">Teaching</option><option value="Non-Teaching">Non-Teaching</option></select></div>
-						<div class="adv-field"><label for="advLevel">Teaching level</label><select class="input" id="advLevel"><option value="">Any</option><option value="Pre Primary">Pre Primary</option><option value="Primary">Primary</option><option value="Lower Secondary">Lower Secondary</option><option value="Secondary">Secondary</option></select></div>
+						<div class="adv-field"><label for="advLevel">Level / Position</label><select class="input" id="advLevel"><option value="">Any</option><optgroup label="Teaching"><option value="Pre Primary">Pre Primary</option><option value="Primary">Primary</option><option value="Lower Secondary">Lower Secondary</option><option value="Secondary">Secondary</option><option value="ECA">ECA</option></optgroup><optgroup label="Administrative"><option value="Executive Director">Executive Director</option><option value="Principal">Principal</option><option value="Vice Principal">Vice Principal</option><option value="Finance Director">Finance Director</option><option value="Admin Director">Admin Director</option><option value="IT Incharge">IT Incharge</option><option value="Accounts Officer">Accounts Officer</option></optgroup><optgroup label="Non-Teaching"><option value="Receptionist">Receptionist</option><option value="Librarian">Librarian</option><option value="Office Assistant">Office Assistant</option><option value="Driver">Driver</option><option value="Canteen Staff">Canteen Staff</option><option value="Support Staff">Support Staff</option><option value="Security Guard">Security Guard</option><option value="Counselor">Counselor</option></optgroup></select></div>
 						<div class="adv-field"><label for="advStatus">Status</label><select class="input" id="advStatus"><option value="">Any</option><option value="active">Active</option><option value="upcoming">Upcoming</option><option value="soon">Ending soon</option><option value="ended">Ended</option></select></div>
 					</div>
 					<div class="adv-summary" id="advSummary"></div>
@@ -895,7 +895,7 @@
 				</div>
 				<p class="field__error" id="err-name" role="alert"></p>
 
-				<!-- Job Details row: Employment Type, Department, Teaching Level -->
+				<!-- Job Details row: Employment Type, Department, Level / Position -->
 				<div class="form-row form-row--job">
 					<div class="field">
 						<label class="field__label" for="f-emp-type"
@@ -916,16 +916,11 @@
 							<option value="Non-Teaching">Non-Teaching</option>
 						</select>
 					</div>
-					<div class="field" id="field-teaching-level" hidden>
-						<label class="field__label" for="f-level"
+					<div class="field" id="field-teaching-level">
+						<label class="field__label" for="f-level" id="f-level-label"
 							>Teaching Level <span class="req">*</span></label
 						>
-						<select class="input" id="f-level">
-							<option value="Pre Primary">Pre Primary</option>
-							<option value="Primary" selected>Primary</option>
-							<option value="Lower Secondary">Lower Secondary</option>
-							<option value="Secondary">Secondary</option>
-						</select>
+						<select class="input" id="f-level"></select>
 					</div>
 				</div>
 
@@ -1169,7 +1164,7 @@
 						<code>Name</code> &bull;
 						<code>Type (Full-time/Part-time)</code> &bull;
 						<code>Department</code> &bull;
-						<code>Level (if Teaching)</code> &bull;
+						<code>Level / Position</code> &bull;
 						<code>Appointment</code> &bull; <code>Termination</code>
 					</div>
 					<div class="import-guide__notes">
@@ -1280,7 +1275,7 @@
 									<th>Name</th>
 									<th>Type</th>
 									<th>Department</th>
-									<th>Level</th>
+									<th>Level / Position</th>
 									<th>Appointment</th>
 									<th>Termination</th>
 									<th style="width: 110px">Status</th>
