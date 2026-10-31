@@ -1,506 +1,1319 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Staff Tenure</title>
-  <link rel="stylesheet" href="app.css">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231F4E79'/%3E%3Ctext x='16' y='22' font-family='sans-serif' font-size='18' font-weight='bold' fill='white' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
-</head>
-<body>
-  <!-- Sign In Screen -->
-  <div class="auth-screen" id="authScreen">
-    <div class="auth-card">
-      <div class="auth-card__brand">
-        <div class="auth-card__logo">
-          <svg width="32" height="32" viewBox="0 0 32 32">
-            <rect width="32" height="32" rx="6" fill="#1F4E79"/>
-            <text x="16" y="22" font-family="sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">S</text>
-          </svg>
-        </div>
-        <h1 class="auth-card__title">Staff Tenure</h1>
-        <p class="auth-card__sub">Sign in to access staff directory</p>
-      </div>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Staff Tenure</title>
+		<link rel="stylesheet" href="app.css" />
+		<link
+			rel="icon"
+			type="image/png"
+			href="logo.png"
+		/>
+	</head>
+	<body>
+		<!-- Sign In Screen -->
+		<div class="auth-screen" id="authScreen">
+			<div class="auth-card">
+				<div class="auth-card__brand">
+					<div class="school-brand school-brand--auth">
+						<img class="school-brand__logo" src="logo.png" alt="Occidental Public School logo" />
+						<div class="school-brand__text">
+							<span class="school-brand__name">Occidental Public School</span>
+							<span class="school-brand__addr">Anamnagar, Kathmandu</span>
+						</div>
+					</div>
+					<h1 class="auth-card__title">Staff Tenure</h1>
+					<p class="auth-card__sub">Sign in to access staff directory</p>
+				</div>
 
-      <form class="auth-form" id="authForm" novalidate>
-        <div class="field">
-          <label class="field__label" for="authUsername">Username ID</label>
-          <input class="input" id="authUsername" type="text" placeholder="Enter username (e.g. ops)" autocomplete="username" required>
-        </div>
+				<form class="auth-form" id="authForm" novalidate>
+					<div class="field">
+						<label class="field__label" for="authUsername">Username ID</label>
+						<input
+							class="input"
+							id="authUsername"
+							type="text"
+							placeholder="Enter username (e.g. ops)"
+							autocomplete="username"
+							required
+						/>
+					</div>
 
-        <div class="field">
-          <label class="field__label" for="authPassword">Password</label>
-          <input class="input" id="authPassword" type="password" placeholder="Enter password" autocomplete="current-password" required>
-        </div>
+					<div class="field">
+						<label class="field__label" for="authPassword">Password</label>
+						<input
+							class="input"
+							id="authPassword"
+							type="password"
+							placeholder="Enter password"
+							autocomplete="current-password"
+							required
+						/>
+					</div>
 
-        <div class="auth-remember-row">
-          <label class="auth-remember-label">
-            <input type="checkbox" id="authRemember" checked>
-            <span>Stay signed in</span>
-          </label>
-        </div>
+					<div class="auth-remember-row">
+						<label class="auth-remember-label">
+							<input type="checkbox" id="authRemember" checked />
+							<span>Stay signed in</span>
+						</label>
+					</div>
 
-        <div class="field__error field__error--auth" id="authError" role="alert"></div>
+					<div
+						class="field__error field__error--auth"
+						id="authError"
+						role="alert"
+					></div>
 
-        <button class="btn btn--primary auth-btn" id="authSubmitBtn" type="submit">Sign In</button>
-      </form>
-    </div>
-  </div>
+					<button
+						class="btn btn--primary auth-btn"
+						id="authSubmitBtn"
+						type="submit"
+					>
+						Sign In
+					</button>
+				</form>
+			</div>
+		</div>
 
-  <div class="app-layout" id="appLayout" hidden>
+		<div class="app-layout" id="appLayout" hidden>
+			<!-- Header -->
+			<header class="topbar">
+				<div class="topbar__left">
+					<div class="school-brand">
+						<img class="school-brand__logo" src="logo.png" alt="Occidental Public School logo" />
+						<div class="school-brand__text">
+							<span class="school-brand__name">Occidental Public School</span>
+							<span class="school-brand__addr">Anamnagar, Kathmandu</span>
+						</div>
+					</div>
+					<div class="topbar__meta">
+						<h1 class="topbar__title">Staff Tenure</h1>
+						<div class="today-subtle" id="todaySubtle"></div>
+					</div>
+				</div>
 
-    <!-- Header -->
-    <header class="topbar">
-      <div class="topbar__left">
-        <h1 class="topbar__title">Staff Tenure</h1>
-        <div class="today-subtle" id="todaySubtle"></div>
-      </div>
+				<div class="topbar__right">
+					<!-- Calendar toggle -->
+					<div
+						class="cal-segmented"
+						role="radiogroup"
+						aria-label="Select Calendar"
+					>
+						<button
+							class="cal-segmented__btn"
+							id="cal-ad"
+							role="radio"
+							aria-checked="false"
+							type="button"
+							data-cal="ad"
+						>
+							AD
+						</button>
+						<button
+							class="cal-segmented__btn"
+							id="cal-bs"
+							role="radio"
+							aria-checked="true"
+							type="button"
+							data-cal="bs"
+						>
+							BS
+						</button>
+					</div>
 
-      <div class="topbar__right">
-        <!-- Calendar toggle -->
-        <div class="cal-segmented" role="radiogroup" aria-label="Select Calendar">
-          <button class="cal-segmented__btn" id="cal-ad" role="radio" aria-checked="false" type="button" data-cal="ad">AD</button>
-          <button class="cal-segmented__btn" id="cal-bs" role="radio" aria-checked="true" type="button" data-cal="bs">BS</button>
-        </div>
 
-        <!-- Print -->
-        <button class="btn btn--subtle" id="printBtn" type="button" title="Print table">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-          <span>Print</span>
-        </button>
 
-        <!-- Export -->
-        <button class="btn btn--subtle" id="exportBtn" type="button" title="Export table to Excel">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span id="exportBtnLabel">Export</span>
-        </button>
+					<!-- Export -->
+					<button
+						class="btn btn--subtle"
+						id="exportBtn"
+						type="button"
+						title="Export table to Excel"
+					>
+						<svg
+							width="15"
+							height="15"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+							<polyline points="7 10 12 15 17 10" />
+							<line x1="12" y1="15" x2="12" y2="3" />
+						</svg>
+						<span id="exportBtnLabel">Export</span>
+					</button>
 
-        <!-- Import -->
-        <button class="btn btn--subtle" id="importBtn" type="button" title="Import records from Excel or CSV">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <span>Import</span>
-        </button>
+					<!-- Import -->
+					<button
+						class="btn btn--subtle"
+						id="importBtn"
+						type="button"
+						title="Import records from Excel or CSV"
+					>
+						<svg
+							width="15"
+							height="15"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+							<polyline points="17 8 12 3 7 8" />
+							<line x1="12" y1="3" x2="12" y2="15" />
+						</svg>
+						<span>Import</span>
+					</button>
 
-        <!-- Settings -->
-        <button class="btn btn--icon-only" id="settingsBtn" type="button" title="Settings" aria-label="Open settings">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </button>
+					<!-- Settings -->
+					<button
+						class="btn btn--icon-only"
+						id="settingsBtn"
+						type="button"
+						title="Settings"
+						aria-label="Open settings"
+					>
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<circle cx="12" cy="12" r="3" />
+							<path
+								d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+							/>
+						</svg>
+					</button>
 
-        <!-- Sign Out -->
-        <button class="btn btn--subtle" id="topbarSignOutBtn" type="button" title="Sign out" style="font-size: 0.85rem;">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          <span>Sign Out</span>
-        </button>
+					<!-- Sign Out -->
+					<button
+						class="btn btn--subtle"
+						id="topbarSignOutBtn"
+						type="button"
+						title="Sign out"
+						style="font-size: 0.85rem"
+					>
+						<svg
+							width="15"
+							height="15"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+							<polyline points="16 17 21 12 16 7" />
+							<line x1="21" y1="12" x2="9" y2="12" />
+						</svg>
+						<span>Sign Out</span>
+					</button>
 
-        <!-- Prominent Add Staff button -->
-        <button class="btn btn--primary" id="addBtn" type="button">+ Add Staff</button>
-      </div>
-    </header>
+					<!-- Prominent Add Staff button -->
+					<button class="btn btn--primary" id="addBtn" type="button">
+						+ Add Staff
+					</button>
+				</div>
+			</header>
 
-    <!-- Navigation tabs between Dashboard, Directory, and Mini Excel -->
-    <nav class="app-nav" role="tablist" aria-label="Views">
-      <button class="nav-tab active" id="tab-dashboard" role="tab" aria-selected="true" type="button">Dashboard</button>
-      <button class="nav-tab" id="tab-directory" role="tab" aria-selected="false" type="button">Staff Directory</button>
-      <button class="nav-tab" id="tab-excel" role="tab" aria-selected="false" type="button">Mini Excel</button>
-    </nav>
+			<!-- Print-only letterhead (shown only when printing / saving to PDF) -->
+			<div class="print-header school-brand-wrap" aria-hidden="true">
+				<div class="school-brand">
+					<img class="school-brand__logo" src="logo.png" alt="" />
+					<div class="school-brand__text">
+						<span class="school-brand__name">Occidental Public School</span>
+						<span class="school-brand__addr">Anamnagar, Kathmandu</span>
+					</div>
+				</div>
+				<div class="print-header__title">Staff Tenure</div>
+			</div>
 
-    <!-- VIEW 1: DASHBOARD -->
-    <section class="app-view" id="view-dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
-      <!-- Summary KPI Metric Cards -->
-      <div class="dash-grid">
-        <div class="dash-stat-card" data-filter-target="all" role="button" tabindex="0" title="View all staff">
-          <span class="dash-stat-card__title">Total Staff</span>
-          <span class="dash-stat-card__val" id="dashTotal">0</span>
-        </div>
+			<!-- Navigation tabs between Dashboard, Directory, and Mini Excel -->
+			<nav class="app-nav" role="tablist" aria-label="Views">
+				<button
+					class="nav-tab active"
+					id="tab-dashboard"
+					role="tab"
+					aria-selected="true"
+					type="button"
+				>
+					Dashboard
+				</button>
+				<button
+					class="nav-tab"
+					id="tab-directory"
+					role="tab"
+					aria-selected="false"
+					type="button"
+				>
+					Staff Directory
+				</button>
+				<button
+					class="nav-tab"
+					id="tab-excel"
+					role="tab"
+					aria-selected="false"
+					type="button"
+				>
+					Mini Excel
+				</button>
+				<button class="nav-tab" id="tab-search" role="tab" aria-selected="false" type="button">
+					Advanced Search
+				</button>
+			</nav>
 
-        <div class="dash-stat-card dash-stat-card--active" data-filter-target="active" role="button" tabindex="0" title="View active staff">
-          <span class="dash-stat-card__title">Active</span>
-          <span class="dash-stat-card__val" id="dashActive">0</span>
-        </div>
+			<!-- VIEW 1: DASHBOARD -->
+			<section
+				class="app-view"
+				id="view-dashboard"
+				role="tabpanel"
+				aria-labelledby="tab-dashboard"
+			>
+				<!-- Summary KPI Metric Cards -->
+				<div class="dash-grid">
+					<div
+						class="dash-stat-card"
+						data-filter-target="all"
+						role="button"
+						tabindex="0"
+						title="View all staff"
+					>
+						<span class="dash-stat-card__title">Total Staff</span>
+						<span class="dash-stat-card__val" id="dashTotal">0</span>
+					</div>
 
-        <div class="dash-stat-card dash-stat-card--upcoming" data-filter-target="upcoming" role="button" tabindex="0" title="View upcoming staff">
-          <span class="dash-stat-card__title">Upcoming</span>
-          <span class="dash-stat-card__val" id="dashUpcoming">0</span>
-        </div>
+					<div
+						class="dash-stat-card dash-stat-card--active"
+						data-filter-target="active"
+						role="button"
+						tabindex="0"
+						title="View active staff"
+					>
+						<span class="dash-stat-card__title">Active</span>
+						<span class="dash-stat-card__val" id="dashActive">0</span>
+					</div>
 
-        <div class="dash-stat-card dash-stat-card--soon" data-filter-target="soon" role="button" tabindex="0" title="View staff ending soon">
-          <span class="dash-stat-card__title">Ending Soon</span>
-          <span class="dash-stat-card__val" id="dashSoon">0</span>
-        </div>
+					<div
+						class="dash-stat-card dash-stat-card--upcoming"
+						data-filter-target="upcoming"
+						role="button"
+						tabindex="0"
+						title="View upcoming staff"
+					>
+						<span class="dash-stat-card__title">Upcoming</span>
+						<span class="dash-stat-card__val" id="dashUpcoming">0</span>
+					</div>
 
-        <div class="dash-stat-card dash-stat-card--ended" data-filter-target="ended" role="button" tabindex="0" title="View ended staff">
-          <span class="dash-stat-card__title">Ended</span>
-          <span class="dash-stat-card__val" id="dashEnded">0</span>
-        </div>
-      </div>
+					<div
+						class="dash-stat-card dash-stat-card--soon"
+						data-filter-target="soon"
+						role="button"
+						tabindex="0"
+						title="View staff ending soon"
+					>
+						<span class="dash-stat-card__title">Ending Soon</span>
+						<span class="dash-stat-card__val" id="dashSoon">0</span>
+					</div>
 
-      <!-- Alert Banner (shown only when staff are ending soon or today) -->
-      <div class="dash-alert-banner" id="dashAlertSection" hidden>
-        <div class="dash-alert-banner__icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        </div>
-        <div class="dash-alert-banner__body">
-          <h4 class="dash-alert-banner__title">Attention Needed (Ending Soon or Today)</h4>
-          <div class="dash-alert-list" id="dashAlertList"></div>
-        </div>
-      </div>
+					<div
+						class="dash-stat-card dash-stat-card--ended"
+						data-filter-target="ended"
+						role="button"
+						tabindex="0"
+						title="View ended staff"
+					>
+						<span class="dash-stat-card__title">Ended</span>
+						<span class="dash-stat-card__val" id="dashEnded">0</span>
+					</div>
+				</div>
 
-      <!-- Bar Graphs Section -->
-      <div class="dash-charts-grid">
-        <!-- Graph 1: Status Distribution Bar Graph -->
-        <div class="chart-card">
-          <div class="chart-card__header">
-            <div>
-              <h3 class="chart-card__title">Staff by Status</h3>
-              <p class="chart-card__subtitle">Distribution across employment lifecycle</p>
-            </div>
-            <span class="chart-badge" id="chartTotalBadge">0 Staff</span>
-          </div>
-          <div class="chart-card__body" id="statusChartBody"></div>
-        </div>
+				<!-- Alert Banner (shown only when staff are ending soon or today) -->
+				<div class="dash-alert-banner" id="dashAlertSection" hidden>
+					<div class="dash-alert-banner__icon">
+						<svg
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path
+								d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+							/>
+							<line x1="12" y1="9" x2="12" y2="13" />
+							<line x1="12" y1="17" x2="12.01" y2="17" />
+						</svg>
+					</div>
+					<div class="dash-alert-banner__body">
+						<h4 class="dash-alert-banner__title">
+							Attention Needed (Ending Soon or Today)
+						</h4>
+						<div class="dash-alert-list" id="dashAlertList"></div>
+					</div>
+				</div>
 
-        <!-- Graph 2: Tenure / Service Duration Distribution Bar Graph -->
-        <div class="chart-card">
-          <div class="chart-card__header">
-            <div>
-              <h3 class="chart-card__title">Service Tenure Distribution</h3>
-              <p class="chart-card__subtitle">Years of service among active staff</p>
-            </div>
-            <span class="chart-badge" id="chartActiveBadge">0 Active</span>
-          </div>
-          <div class="chart-card__body" id="tenureChartBody"></div>
-        </div>
-      </div>
-    </section>
+				<!-- Bar Graphs Section -->
+				<div class="dash-charts-grid">
+					<!-- Graph 1: Status Distribution Bar Graph -->
+					<div class="chart-card">
+						<div class="chart-card__header">
+							<div>
+								<h3 class="chart-card__title">Staff by Status</h3>
+								<p class="chart-card__subtitle">
+									Distribution across employment lifecycle
+								</p>
+							</div>
+							<span class="chart-badge" id="chartTotalBadge">0 Staff</span>
+						</div>
+						<div class="chart-card__body" id="statusChartBody"></div>
+					</div>
 
-    <!-- VIEW 2: STAFF DIRECTORY TABLE -->
-    <section class="app-view" id="view-directory" role="tabpanel" aria-labelledby="tab-directory" hidden>
-      <div class="toolbar">
-        <div class="filters" role="group" aria-label="Filter records" id="filters"></div>
-        <div class="search-box" id="searchBox">
-          <svg class="search-box__icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="search-box__input" id="search" type="search" placeholder="Search staff..." autocomplete="off">
-          <button class="search-box__clear" id="searchClear" type="button" aria-label="Clear search" title="Clear search">x</button>
-        </div>
-      </div>
+					<!-- Graph 2: Tenure / Service Duration Distribution Bar Graph -->
+					<div class="chart-card">
+						<div class="chart-card__header">
+							<div>
+								<h3 class="chart-card__title">Service Tenure Distribution</h3>
+								<p class="chart-card__subtitle">
+									Years of service among active staff
+								</p>
+							</div>
+							<span class="chart-badge" id="chartActiveBadge">0 Active</span>
+						</div>
+						<div class="chart-card__body" id="tenureChartBody"></div>
+					</div>
+				</div>
+			</section>
 
-      <div class="notion-table-wrap" id="sheet" aria-live="polite"></div>
-    </section>
+			<!-- VIEW 2: STAFF DIRECTORY TABLE -->
+			<section
+				class="app-view"
+				id="view-directory"
+				role="tabpanel"
+				aria-labelledby="tab-directory"
+				hidden
+			>
+				<div class="toolbar">
+					<div
+						class="filters"
+						role="group"
+						aria-label="Filter records"
+						id="filters"
+					></div>
+					<div class="search-box" id="searchBox">
+						<svg
+							class="search-box__icon"
+							width="14"
+							height="14"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<circle cx="11" cy="11" r="8" />
+							<line x1="21" y1="21" x2="16.65" y2="16.65" />
+						</svg>
+						<input
+							class="search-box__input"
+							id="search"
+							type="search"
+							placeholder="Search staff..."
+							autocomplete="off"
+						/>
+						<button
+							class="search-box__clear"
+							id="searchClear"
+							type="button"
+							aria-label="Clear search"
+							title="Clear search"
+						>
+							x
+						</button>
+					</div>
+					<button class="btn btn--subtle" id="printDirBtn" type="button" title="Print staff directory"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg><span>Print</span></button>
+				</div>
 
-    <!-- VIEW 3: MINI EXCEL IN BROWSER -->
-    <section class="app-view" id="view-excel" role="tabpanel" aria-labelledby="tab-excel" hidden>
-      <div class="excel-panel">
-        <div class="excel-ribbon">
-          <div class="excel-ribbon__left">
-            <span class="excel-cell-name" id="excelCellCoords">A1</span>
-            <div class="excel-fx-bar">
-              <span class="excel-fx-label">fx</span>
-              <input class="excel-fx-input" id="excelFxInput" type="text" placeholder="Select a cell to view or edit" autocomplete="off">
-            </div>
-          </div>
-          <div class="excel-ribbon__right">
-            <span class="excel-autosave-tag" id="excelSaveStatus">Auto-saving active</span>
-            <button class="btn btn--subtle" id="excelAddRowBtn" type="button">+ New Row</button>
-          </div>
-        </div>
+				<div class="notion-table-wrap" id="sheet" aria-live="polite"></div>
+			</section>
 
-        <div class="excel-grid-container" id="excelGridContainer">
-          <!-- Rendered dynamically -->
-        </div>
-      </div>
-    </section>
+			<!-- VIEW 3: MINI EXCEL IN BROWSER -->
+			<section
+				class="app-view"
+				id="view-excel"
+				role="tabpanel"
+				aria-labelledby="tab-excel"
+				hidden
+			>
+				<div class="excel-panel">
+					<div class="excel-ribbon">
+						<div class="excel-ribbon__left">
+							<span class="excel-cell-name" id="excelCellCoords">A1</span>
+							<div class="excel-fx-bar">
+								<span class="excel-fx-label">fx</span>
+								<input
+									class="excel-fx-input"
+									id="excelFxInput"
+									type="text"
+									placeholder="Select a cell to view or edit"
+									autocomplete="off"
+								/>
+							</div>
+						</div>
+						<div class="excel-ribbon__right">
+							<span class="excel-autosave-tag" id="excelSaveStatus"
+								>Auto-saving active</span
+							>
+							<button class="btn btn--subtle" id="excelAddRowBtn" type="button">
+								+ New Row
+							</button>
+						</div>
+					</div>
 
-    <footer class="app-footer" id="foot"></footer>
-  </div>
+					<div class="excel-grid-container" id="excelGridContainer">
+						<!-- Rendered dynamically -->
+					</div>
+				</div>
+			</section>
 
-  <!-- Settings Sidebar Drawer -->
-  <div class="sidebar-backdrop" id="sidebarBackdrop" hidden></div>
-  <aside class="sidebar" id="sidebar" aria-label="Settings Sidebar" hidden>
-    <div class="sidebar__header">
-      <h2 class="sidebar__title">Settings</h2>
-      <button class="sidebar__close" id="sidebarClose" type="button" aria-label="Close settings">x</button>
-    </div>
 
-    <div class="sidebar__content">
-      <!-- Theme Selection -->
-      <div class="setting-group">
-        <label class="setting-group__label">Theme</label>
-        <div class="theme-options" id="themeOptions">
-          <button class="theme-btn" type="button" data-theme="default" aria-pressed="true">
-            <span class="theme-btn__preview theme-btn__preview--notion"></span>
-            <span class="theme-btn__name">Default</span>
-          </button>
-          <button class="theme-btn" type="button" data-theme="bw" aria-pressed="false">
-            <span class="theme-btn__preview theme-btn__preview--bw"></span>
-            <span class="theme-btn__name">Black &amp; White</span>
-          </button>
-          <button class="theme-btn" type="button" data-theme="green" aria-pressed="false">
-            <span class="theme-btn__preview theme-btn__preview--green"></span>
-            <span class="theme-btn__name">Green Ledger</span>
-          </button>
-          <button class="theme-btn" type="button" data-theme="vanilla" aria-pressed="false">
-            <span class="theme-btn__preview theme-btn__preview--vanilla"></span>
-            <span class="theme-btn__name">Vanilla Old School</span>
-          </button>
-        </div>
-      </div>
+			<!-- VIEW 4: ADVANCED SEARCH -->
+			<section class="app-view" id="view-search" role="tabpanel" aria-labelledby="tab-search" hidden>
+				<div class="adv-panel">
+					<div class="adv-head">
+						<div>
+							<h2 class="adv-title">Advanced Search</h2>
+							<p class="adv-sub">Filter by length of service, type, department and more, then print only those results.</p>
+						</div>
+						<div class="adv-actions">
+							<button class="btn btn--subtle" id="advReset" type="button">Reset</button>
+							<button class="btn btn--primary" id="printSearchBtn" type="button">Print results</button>
+						</div>
+					</div>
+					<div class="adv-label">Quick service range</div>
+					<div class="adv-presets" id="advPresets"></div>
+					<div class="adv-grid">
+						<div class="adv-field"><label for="advMin">Service from (years)</label><input class="input" id="advMin" type="number" min="0" step="0.5" placeholder="e.g. 10" /></div>
+						<div class="adv-field"><label for="advMax">Service up to (years)</label><input class="input" id="advMax" type="number" min="0" step="0.5" placeholder="e.g. 20" /></div>
+						<div class="adv-field"><label for="advName">Name contains</label><input class="input" id="advName" type="search" placeholder="Search name..." autocomplete="off" /></div>
+						<div class="adv-field"><label for="advType">Type</label><select class="input" id="advType"><option value="">Any</option><option value="Full-time">Full time</option><option value="Part-time">Part time</option></select></div>
+						<div class="adv-field"><label for="advDept">Department</label><select class="input" id="advDept"><option value="">Any</option><option value="Administrative">Administrative</option><option value="Teaching">Teaching</option><option value="Non-Teaching">Non-Teaching</option></select></div>
+						<div class="adv-field"><label for="advLevel">Teaching level</label><select class="input" id="advLevel"><option value="">Any</option><option value="Pre Primary">Pre Primary</option><option value="Primary">Primary</option><option value="Lower Secondary">Lower Secondary</option><option value="Secondary">Secondary</option></select></div>
+						<div class="adv-field"><label for="advStatus">Status</label><select class="input" id="advStatus"><option value="">Any</option><option value="active">Active</option><option value="upcoming">Upcoming</option><option value="soon">Ending soon</option><option value="ended">Ended</option></select></div>
+					</div>
+					<div class="adv-summary" id="advSummary"></div>
+				</div>
+				<div class="print-only" id="advPrintHead"></div>
+				<div class="notion-table-wrap" id="advSheet" aria-live="polite"></div>
+			</section>
 
-      <!-- Text Size Range Slider -->
-      <div class="setting-group">
-        <div class="setting-group__row">
-          <label class="setting-group__label" for="textSizeSlider">Text Size</label>
-          <span class="setting-group__value" id="textSizeVal">14px</span>
-        </div>
-        <input class="range-slider" id="textSizeSlider" type="range" min="12" max="18" value="14" step="1">
-      </div>
+			<footer class="app-footer" id="foot"></footer>
+		</div>
 
-      <!-- Font Style Selection -->
-      <div class="setting-group">
-        <label class="setting-group__label">Font Style</label>
-        <div class="font-options" id="fontOptions">
-          <button class="chip-btn" type="button" data-font="sans" aria-pressed="true">Default</button>
-          <button class="chip-btn" type="button" data-font="calibri" aria-pressed="false">Calibri</button>
-          <button class="chip-btn" type="button" data-font="segoe" aria-pressed="false">Segoe UI</button>
-          <button class="chip-btn" type="button" data-font="serif" aria-pressed="false">Serif</button>
-          <button class="chip-btn" type="button" data-font="mono" aria-pressed="false">Mono</button>
-        </div>
-      </div>
+		<!-- Settings Sidebar Drawer -->
+		<div class="sidebar-backdrop" id="sidebarBackdrop" hidden></div>
+		<aside class="sidebar" id="sidebar" aria-label="Settings Sidebar" hidden>
+			<div class="sidebar__header">
+				<div><h2 class="sidebar__title">Settings</h2><p class="sidebar__sub">Appearance, display and data</p></div>
+				<button
+					class="sidebar__close"
+					id="sidebarClose"
+					type="button"
+					aria-label="Close settings"
+				>
+					x
+				</button>
+			</div>
 
-      <!-- Service Time Display Format -->
-      <div class="setting-group">
-        <label class="setting-group__label">Service Time Display</label>
-        <div class="service-format-options" id="serviceFormatOptions">
-          <button class="chip-btn" type="button" data-service-unit="full" aria-pressed="true">Full (Y, M, D)</button>
-          <button class="chip-btn" type="button" data-service-unit="years" aria-pressed="false">Years only</button>
-          <button class="chip-btn" type="button" data-service-unit="months" aria-pressed="false">Months only</button>
-          <button class="chip-btn" type="button" data-service-unit="days" aria-pressed="false">Days only</button>
-        </div>
-      </div>
+			<div class="sidebar__content">
+				<!-- Theme Selection -->
+				<div class="setting-group">
+					<label class="setting-group__label">Theme</label>
+					<div class="theme-options" id="themeOptions">
+						<button
+							class="theme-btn"
+							type="button"
+							data-theme="default"
+							aria-pressed="true"
+						>
+							<span
+								class="theme-btn__preview theme-btn__preview--notion"
+							></span>
+							<span class="theme-btn__name">Default</span>
+						</button>
+						<button
+							class="theme-btn"
+							type="button"
+							data-theme="bw"
+							aria-pressed="false"
+						>
+							<span class="theme-btn__preview theme-btn__preview--bw"></span>
+							<span class="theme-btn__name">Black &amp; White</span>
+						</button>
+						<button
+							class="theme-btn"
+							type="button"
+							data-theme="green"
+							aria-pressed="false"
+						>
+							<span class="theme-btn__preview theme-btn__preview--green"></span>
+							<span class="theme-btn__name">Green Ledger</span>
+						</button>
+						<button
+							class="theme-btn"
+							type="button"
+							data-theme="vanilla"
+							aria-pressed="false"
+						>
+							<span
+								class="theme-btn__preview theme-btn__preview--vanilla"
+							></span>
+							<span class="theme-btn__name">Vanilla Old School</span>
+						</button>
+					</div>
+				</div>
 
-      <!-- Purge Database Option (password: ops@123) -->
-      <div class="setting-group setting-group--danger" style="margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--line);">
-        <label class="setting-group__label" style="color: var(--danger);">Danger Zone</label>
-        <p class="setting-desc">Permanently erase all staff records from database.</p>
-        <button class="btn btn--danger" id="purgeDataBtn" type="button" style="width: 100%;">Purge All Data</button>
-      </div>
+				<!-- Text Size Range Slider -->
+				<div class="setting-group">
+					<div class="setting-group__row">
+						<label class="setting-group__label" for="textSizeSlider"
+							>Text Size</label
+						>
+						<span class="setting-group__value" id="textSizeVal">14px</span>
+					</div>
+					<input
+						class="range-slider"
+						id="textSizeSlider"
+						type="range"
+						min="12"
+						max="18"
+						value="14"
+						step="1"
+					/>
+				</div>
 
-      <!-- Session / Sign Out -->
-      <div class="setting-group" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line);">
-        <label class="setting-group__label">Session</label>
-        <p class="setting-desc">Signed in as <strong id="sidebarUsername">ops</strong></p>
-        <button class="btn btn--subtle" id="sidebarSignOutBtn" type="button" style="width: 100%; border: 1px solid var(--line);">Sign Out</button>
-      </div>
+				<!-- Font Style Selection -->
+				<div class="setting-group">
+					<label class="setting-group__label">Font Style</label>
+					<div class="font-options" id="fontOptions">
+						<button
+							class="chip-btn"
+							type="button"
+							data-font="sans"
+							aria-pressed="true"
+						>
+							Default
+						</button>
+						<button
+							class="chip-btn"
+							type="button"
+							data-font="calibri"
+							aria-pressed="false"
+						>
+							Calibri
+						</button>
+						<button
+							class="chip-btn"
+							type="button"
+							data-font="segoe"
+							aria-pressed="false"
+						>
+							Segoe UI
+						</button>
+						<button
+							class="chip-btn"
+							type="button"
+							data-font="serif"
+							aria-pressed="false"
+						>
+							Serif
+						</button>
+						<button
+							class="chip-btn"
+							type="button"
+							data-font="mono"
+							aria-pressed="false"
+						>
+							Mono
+						</button>
+					</div>
+				</div>
 
-    </div>
-  </aside>
+				<!-- Service Time Display Format -->
+				<div class="setting-group">
+					<label class="setting-group__label">Service Time Display</label>
+					<div class="service-format-options" id="serviceFormatOptions">
+						<button
+							class="chip-btn"
+							type="button"
+							data-service-unit="full"
+							aria-pressed="true"
+						>
+							Full (Y, M, D)
+						</button>
+						<button
+							class="chip-btn"
+							type="button"
+							data-service-unit="years"
+							aria-pressed="false"
+						>
+							Years only
+						</button>
+						<button
+							class="chip-btn"
+							type="button"
+							data-service-unit="months"
+							aria-pressed="false"
+						>
+							Months only
+						</button>
+						<button
+							class="chip-btn"
+							type="button"
+							data-service-unit="days"
+							aria-pressed="false"
+						>
+							Days only
+						</button>
+					</div>
+				</div>
 
-  <!-- Add / Edit Staff Dialog -->
-  <dialog class="notion-dialog" id="dialog" aria-labelledby="dialogTitle">
-    <form class="notion-form" id="form" novalidate>
-      <div class="notion-form__header">
-        <h2 class="notion-form__title" id="dialogTitle">Add Staff</h2>
-        <button class="notion-form__close" id="dialogCloseX" type="button" aria-label="Close dialog">x</button>
-      </div>
+				<!-- Date Display Format -->
+				<div class="setting-group">
+					<label class="setting-group__label">Date Display Format</label>
+					<div class="date-format-options" id="dateFormatOptions">
+						<button
+							class="chip-btn"
+							type="button"
+							data-date-format="dmy_slash"
+							aria-pressed="false"
+						>
+							D/M/Y (DD/MM/YYYY)
+						</button>
+						<button
+							class="chip-btn"
+							type="button"
+							data-date-format="ymd_dash"
+							aria-pressed="false"
+						>
+							Y-M-D (YYYY-MM-DD)
+						</button>
+						<button
+							class="chip-btn"
+							type="button"
+							data-date-format="mdy_slash"
+							aria-pressed="false"
+						>
+							M/D/Y (MM/DD/YYYY)
+						</button>
+						<button
+							class="chip-btn"
+							type="button"
+							data-date-format="dmy_dash"
+							aria-pressed="false"
+						>
+							D-M-Y (DD-MM-YYYY)
+						</button>
+						<button
+							class="chip-btn"
+							type="button"
+							data-date-format="verbal"
+							aria-pressed="true"
+						>
+							DD Month YYYY
+						</button>
+					</div>
+				</div>
 
-      <!-- Names row -->
-      <div class="form-row form-row--names">
-        <div class="field">
-          <label class="field__label" for="f-first-name">First Name <span class="req">*</span></label>
-          <input class="input" id="f-first-name" type="text" maxlength="60" autocomplete="off" required>
-        </div>
-        <div class="field">
-          <label class="field__label" for="f-middle-name">Middle Name</label>
-          <input class="input" id="f-middle-name" type="text" maxlength="60" autocomplete="off">
-        </div>
-        <div class="field">
-          <label class="field__label" for="f-last-name">Last Name <span class="req">*</span></label>
-          <input class="input" id="f-last-name" type="text" maxlength="60" autocomplete="off" required>
-        </div>
-      </div>
-      <p class="field__error" id="err-name" role="alert"></p>
+				<!-- Export CSV Fields -->
+				<div
+					class="setting-group"
+					style="padding-top: 10px; border-top: 1px solid var(--line)"
+				>
+					<div class="setting-group__row">
+						<label class="setting-group__label">Export to CSV Fields</label>
+						<button
+							class="link-clear-btn"
+							id="exportFieldsToggleAll"
+							type="button"
+						>
+							Select All
+						</button>
+					</div>
+					<p class="setting-desc">
+						Choose which columns to include in downloaded Excel CSV files.
+					</p>
+					<div class="field-checkboxes-grid" id="exportFieldsList"></div>
+				</div>
 
-      <!-- Calendar Switcher inside Form -->
-      <div class="field field--cal">
-        <span class="field__label">Dates calendar</span>
-        <div class="cal-segmented" role="radiogroup" aria-label="Date Calendar" id="dlgCal">
-          <button type="button" role="radio" aria-checked="false" data-cal="ad">A.D.</button>
-          <button type="button" role="radio" aria-checked="true" data-cal="bs">B.S.</button>
-        </div>
-      </div>
+				<!-- Print / PDF Fields -->
+				<div
+					class="setting-group"
+					style="padding-top: 10px; border-top: 1px solid var(--line)"
+				>
+					<div class="setting-group__row">
+						<label class="setting-group__label">Print / PDF Fields</label>
+						<button
+							class="link-clear-btn"
+							id="printFieldsToggleAll"
+							type="button"
+						>
+							Select All
+						</button>
+					</div>
+					<p class="setting-desc">
+						Choose which columns show when printing or saving to PDF.
+					</p>
+					<div class="field-checkboxes-grid" id="printFieldsList"></div>
+				</div>
 
-      <!-- Date of Appointment -->
-      <fieldset class="dategroup" id="grp-join">
-        <legend class="field__label">Date of Appointment <span class="req">*</span></legend>
-        <div class="dategroup__row">
-          <label class="dategroup__cell dategroup__cell--day">
-            <span>Day</span>
-            <input class="input" inputmode="numeric" maxlength="2" data-part="d" placeholder="DD" autocomplete="off">
-          </label>
-          <label class="dategroup__cell dategroup__cell--month">
-            <span>Month</span>
-            <select class="input" data-part="m"></select>
-          </label>
-          <label class="dategroup__cell dategroup__cell--year">
-            <span>Year</span>
-            <input class="input" inputmode="numeric" maxlength="4" data-part="y" placeholder="YYYY" autocomplete="off">
-          </label>
-        </div>
-        <p class="dategroup__eq" data-role="eq"></p>
-        <p class="field__error" id="err-join" role="alert"></p>
-      </fieldset>
+				<!-- Purge Database Option (password: ops@123) -->
+				<div
+					class="setting-group setting-group--danger"
+					style="
+						margin-top: 10px;
+						padding-top: 14px;
+						border-top: 1px solid var(--line);
+					"
+				>
+					<label class="setting-group__label" style="color: var(--danger)"
+						>Danger Zone</label
+					>
+					<p class="setting-desc">
+						Permanently erase all staff records from database.
+					</p>
+					<button
+						class="btn btn--danger"
+						id="purgeDataBtn"
+						type="button"
+						style="width: 100%"
+					>
+						Purge All Data
+					</button>
+				</div>
 
-      <!-- Date of Termination -->
-      <fieldset class="dategroup" id="grp-term">
-        <legend class="field__label">Date of Termination <span class="field__opt">optional</span></legend>
-        <div class="dategroup__row">
-          <label class="dategroup__cell dategroup__cell--day">
-            <span>Day</span>
-            <input class="input" inputmode="numeric" maxlength="2" data-part="d" placeholder="DD" autocomplete="off">
-          </label>
-          <label class="dategroup__cell dategroup__cell--month">
-            <span>Month</span>
-            <select class="input" data-part="m"></select>
-          </label>
-          <label class="dategroup__cell dategroup__cell--year">
-            <span>Year</span>
-            <input class="input" inputmode="numeric" maxlength="4" data-part="y" placeholder="YYYY" autocomplete="off">
-          </label>
-          <button class="link-clear-btn" type="button" data-role="clear">Clear</button>
-        </div>
-        <p class="dategroup__eq" data-role="eq"></p>
-        <p class="field__error" id="err-term" role="alert"></p>
-      </fieldset>
+				<!-- Session / Sign Out -->
+				<div
+					class="setting-group"
+					style="
+						margin-top: 14px;
+						padding-top: 14px;
+						border-top: 1px solid var(--line);
+					"
+				>
+					<label class="setting-group__label">Session</label>
+					<p class="setting-desc">
+						Signed in as <strong id="sidebarUsername">ops</strong>
+					</p>
+					<button
+						class="btn btn--subtle"
+						id="sidebarSignOutBtn"
+						type="button"
+						style="width: 100%; border: 1px solid var(--line)"
+					>
+						Sign Out
+					</button>
+				</div>
+			</div>
+		</aside>
 
-      <p class="field__error field__error--form" id="err-form" role="alert"></p>
+		<!-- Add / Edit Staff Dialog -->
+		<dialog class="notion-dialog" id="dialog" aria-labelledby="dialogTitle">
+			<form class="notion-form" id="form" novalidate>
+				<div class="notion-form__header">
+					<h2 class="notion-form__title" id="dialogTitle">Add Staff</h2>
+					<button
+						class="notion-form__close"
+						id="dialogCloseX"
+						type="button"
+						aria-label="Close dialog"
+					>
+						x
+					</button>
+				</div>
 
-      <div class="notion-form__actions">
-        <button class="btn btn--subtle" type="button" id="cancelBtn">Cancel</button>
-        <button class="btn btn--primary" type="submit" id="saveBtn">Save Record</button>
-      </div>
-    </form>
-  </dialog>
+				<!-- Names row -->
+				<div class="form-row form-row--names">
+					<div class="field">
+						<label class="field__label" for="f-first-name"
+							>First Name <span class="req">*</span></label
+						>
+						<input
+							class="input"
+							id="f-first-name"
+							type="text"
+							maxlength="60"
+							autocomplete="off"
+							required
+						/>
+					</div>
+					<div class="field">
+						<label class="field__label" for="f-middle-name">Middle Name</label>
+						<input
+							class="input"
+							id="f-middle-name"
+							type="text"
+							maxlength="60"
+							autocomplete="off"
+						/>
+					</div>
+					<div class="field">
+						<label class="field__label" for="f-last-name"
+							>Last Name <span class="req">*</span></label
+						>
+						<input
+							class="input"
+							id="f-last-name"
+							type="text"
+							maxlength="60"
+							autocomplete="off"
+							required
+						/>
+					</div>
+				</div>
+				<p class="field__error" id="err-name" role="alert"></p>
 
-  <!-- Delete Confirmation Modal -->
-  <dialog class="notion-dialog notion-dialog--confirm" id="confirmDialog" aria-labelledby="confirmTitle">
-    <div class="confirm-box">
-      <h3 class="confirm-box__title" id="confirmTitle">Delete staff record?</h3>
-      <p class="confirm-box__msg" id="confirmMsg"></p>
-      <div class="confirm-box__actions">
-        <button class="btn btn--subtle" type="button" id="confirmCancel">Cancel</button>
-        <button class="btn btn--danger" type="button" id="confirmOk">Delete</button>
-      </div>
-    </div>
-  </dialog>
+				<!-- Job Details row: Employment Type, Department, Teaching Level -->
+				<div class="form-row form-row--job">
+					<div class="field">
+						<label class="field__label" for="f-emp-type"
+							>Employment Type <span class="req">*</span></label
+						>
+						<select class="input" id="f-emp-type">
+							<option value="Full-time">Full time</option>
+							<option value="Part-time">Part time</option>
+						</select>
+					</div>
+					<div class="field">
+						<label class="field__label" for="f-department"
+							>Department <span class="req">*</span></label
+						>
+						<select class="input" id="f-department">
+							<option value="Administrative">Administrative</option>
+							<option value="Teaching">Teaching</option>
+							<option value="Non-Teaching">Non-Teaching</option>
+						</select>
+					</div>
+					<div class="field" id="field-teaching-level" hidden>
+						<label class="field__label" for="f-level"
+							>Teaching Level <span class="req">*</span></label
+						>
+						<select class="input" id="f-level">
+							<option value="Pre Primary">Pre Primary</option>
+							<option value="Primary" selected>Primary</option>
+							<option value="Lower Secondary">Lower Secondary</option>
+							<option value="Secondary">Secondary</option>
+						</select>
+					</div>
+				</div>
 
-  <!-- Purge Confirmation Modal (Password: ops@123) -->
-  <dialog class="notion-dialog notion-dialog--confirm" id="purgeDialog" aria-labelledby="purgeTitle">
-    <div class="confirm-box">
-      <h3 class="confirm-box__title" id="purgeTitle" style="color: var(--danger);">Purge All Staff Records</h3>
-      <p class="confirm-box__msg">This will permanently delete every staff record. Enter the administrative password to confirm:</p>
-      <div style="margin-bottom: 16px;">
-        <input class="input" id="purgePasswordInput" type="password" placeholder="Enter password (ops@123)" autocomplete="off">
-        <p class="field__error" id="purgeError" role="alert" style="margin-top: 6px;"></p>
-      </div>
-      <div class="confirm-box__actions">
-        <button class="btn btn--subtle" type="button" id="purgeCancelBtn">Cancel</button>
-        <button class="btn btn--danger" type="button" id="purgeConfirmBtn">Confirm Purge</button>
-      </div>
-    </div>
-  </dialog>
+				<!-- Calendar Switcher inside Form -->
+				<div class="field field--cal">
+					<span class="field__label">Dates calendar</span>
+					<div
+						class="cal-segmented"
+						role="radiogroup"
+						aria-label="Date Calendar"
+						id="dlgCal"
+					>
+						<button
+							type="button"
+							role="radio"
+							aria-checked="false"
+							data-cal="ad"
+						>
+							A.D.
+						</button>
+						<button
+							type="button"
+							role="radio"
+							aria-checked="true"
+							data-cal="bs"
+						>
+							B.S.
+						</button>
+					</div>
+				</div>
 
-  <!-- Import from Excel / CSV Dialog -->
-  <dialog class="notion-dialog notion-dialog--import" id="importDialog" aria-labelledby="importDialogTitle">
-    <div class="import-modal">
-      <div class="notion-form__header">
-        <h2 class="notion-form__title" id="importDialogTitle">Import Staff from Excel / CSV</h2>
-        <button class="notion-form__close" id="importDialogCloseX" type="button" aria-label="Close dialog">x</button>
-      </div>
+				<!-- Date of Appointment -->
+				<fieldset class="dategroup" id="grp-join">
+					<legend class="field__label">
+						Date of Appointment <span class="req">*</span>
+					</legend>
+					<div class="dategroup__row">
+						<label class="dategroup__cell dategroup__cell--day">
+							<span>Day</span>
+							<input
+								class="input"
+								inputmode="numeric"
+								maxlength="2"
+								data-part="d"
+								placeholder="DD"
+								autocomplete="off"
+							/>
+						</label>
+						<label class="dategroup__cell dategroup__cell--month">
+							<span>Month</span>
+							<select class="input" data-part="m"></select>
+						</label>
+						<label class="dategroup__cell dategroup__cell--year">
+							<span>Year</span>
+							<input
+								class="input"
+								inputmode="numeric"
+								maxlength="4"
+								data-part="y"
+								placeholder="YYYY"
+								autocomplete="off"
+							/>
+						</label>
+					</div>
+					<p class="dategroup__eq" data-role="eq"></p>
+					<p class="field__error" id="err-join" role="alert"></p>
+				</fieldset>
 
-      <!-- Format Guidance Box -->
-      <div class="import-guide">
-        <div class="import-guide__top">
-          <span class="import-guide__lead">Expected Excel / CSV columns:</span>
-          <button class="btn btn--subtle btn--sm" id="importDownloadTemplateBtn" type="button" title="Download Excel template">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            <span>Download Excel Template</span>
-          </button>
-        </div>
-        <div class="import-guide__format">
-          <code>Name</code> &bull; <code>Date of Appointment</code> &bull; <code>Date of Termination (optional)</code>
-        </div>
-        <div class="import-guide__notes">
-          You can upload a <code>.csv</code> file, or copy cells in Excel (Ctrl+C) and paste below.
-        </div>
-      </div>
+				<!-- Date of Termination -->
+				<fieldset class="dategroup" id="grp-term">
+					<legend class="field__label">
+						Date of Termination <span class="field__opt">optional</span>
+					</legend>
+					<div class="dategroup__row">
+						<label class="dategroup__cell dategroup__cell--day">
+							<span>Day</span>
+							<input
+								class="input"
+								inputmode="numeric"
+								maxlength="2"
+								data-part="d"
+								placeholder="DD"
+								autocomplete="off"
+							/>
+						</label>
+						<label class="dategroup__cell dategroup__cell--month">
+							<span>Month</span>
+							<select class="input" data-part="m"></select>
+						</label>
+						<label class="dategroup__cell dategroup__cell--year">
+							<span>Year</span>
+							<input
+								class="input"
+								inputmode="numeric"
+								maxlength="4"
+								data-part="y"
+								placeholder="YYYY"
+								autocomplete="off"
+							/>
+						</label>
+						<button class="link-clear-btn" type="button" data-role="clear">
+							Clear
+						</button>
+					</div>
+					<p class="dategroup__eq" data-role="eq"></p>
+					<p class="field__error" id="err-term" role="alert"></p>
+				</fieldset>
 
-      <!-- Import Settings: Calendar + Mode -->
-      <div class="import-options-row">
-        <div class="import-opt">
-          <label class="field__label">Dates in file are:</label>
-          <div class="cal-segmented" role="radiogroup" aria-label="Import Date Calendar" id="importCalSegmented">
-            <button class="cal-segmented__btn" id="import-cal-bs" role="radio" aria-checked="true" type="button" data-cal="bs">B.S. (Bikram Sambat)</button>
-            <button class="cal-segmented__btn" id="import-cal-ad" role="radio" aria-checked="false" type="button" data-cal="ad">A.D. (Gregorian)</button>
-          </div>
-        </div>
+				<p
+					class="field__error field__error--form"
+					id="err-form"
+					role="alert"
+				></p>
 
-        <div class="import-opt">
-          <label class="field__label">Database Action:</label>
-          <select class="input input--sm" id="importModeSelect">
-            <option value="append">Append (Add to existing records)</option>
-            <option value="replace">Replace (Overwrite existing records)</option>
-          </select>
-        </div>
-      </div>
+				<div class="notion-form__actions">
+					<button class="btn btn--subtle" type="button" id="cancelBtn">
+						Cancel
+					</button>
+					<button class="btn btn--primary" type="submit" id="saveBtn">
+						Save Record
+					</button>
+				</div>
+			</form>
+		</dialog>
 
-      <!-- File Dropzone + Paste Area -->
-      <div class="import-input-grid">
-        <label class="import-dropzone" id="importDropzone">
-          <input type="file" id="importFileInput" accept=".csv,.tsv,.txt" hidden>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <span class="import-dropzone__text"><strong>Choose file</strong> or drop Excel CSV here</span>
-        </label>
-        
-        <div class="import-paste-area">
-          <textarea class="input import-textarea" id="importPasteInput" rows="3" placeholder="Or paste copied Excel rows here (Ctrl+V)..."></textarea>
-        </div>
-      </div>
+		<!-- Delete Confirmation Modal -->
+		<dialog
+			class="notion-dialog notion-dialog--confirm"
+			id="confirmDialog"
+			aria-labelledby="confirmTitle"
+		>
+			<div class="confirm-box">
+				<h3 class="confirm-box__title" id="confirmTitle">
+					Delete staff record?
+				</h3>
+				<p class="confirm-box__msg" id="confirmMsg"></p>
+				<div class="confirm-box__actions">
+					<button class="btn btn--subtle" type="button" id="confirmCancel">
+						Cancel
+					</button>
+					<button class="btn btn--danger" type="button" id="confirmOk">
+						Delete
+					</button>
+				</div>
+			</div>
+		</dialog>
 
-      <!-- Live Preview Table -->
-      <div class="import-preview-section" id="importPreviewSection" hidden>
-        <div class="import-preview-header">
-          <h4 class="import-preview-title">Preview: <span id="importValidCount">0</span> valid records (<span id="importErrorCount">0</span> errors)</h4>
-          <button class="link-clear-btn" id="importClearBtn" type="button">Clear Data</button>
-        </div>
-        <div class="import-preview-table-wrap">
-          <table class="import-preview-table">
-            <thead>
-              <tr>
-                <th style="width: 36px; text-align: center;">#</th>
-                <th>Name</th>
-                <th>Appointment</th>
-                <th>Termination</th>
-                <th style="width: 110px;">Status</th>
-              </tr>
-            </thead>
-            <tbody id="importPreviewTbody"></tbody>
-          </table>
-        </div>
-      </div>
+		<!-- Purge Confirmation Modal (Password: ops@123) -->
+		<dialog
+			class="notion-dialog notion-dialog--confirm"
+			id="purgeDialog"
+			aria-labelledby="purgeTitle"
+		>
+			<div class="confirm-box">
+				<h3
+					class="confirm-box__title"
+					id="purgeTitle"
+					style="color: var(--danger)"
+				>
+					Purge All Staff Records
+				</h3>
+				<p class="confirm-box__msg">
+					This will permanently delete every staff record. Enter the
+					administrative password to confirm:
+				</p>
+				<div style="margin-bottom: 16px">
+					<input
+						class="input"
+						id="purgePasswordInput"
+						type="password"
+						placeholder="Enter password (ops@123)"
+						autocomplete="off"
+					/>
+					<p
+						class="field__error"
+						id="purgeError"
+						role="alert"
+						style="margin-top: 6px"
+					></p>
+				</div>
+				<div class="confirm-box__actions">
+					<button class="btn btn--subtle" type="button" id="purgeCancelBtn">
+						Cancel
+					</button>
+					<button class="btn btn--danger" type="button" id="purgeConfirmBtn">
+						Confirm Purge
+					</button>
+				</div>
+			</div>
+		</dialog>
 
-      <!-- Error alert -->
-      <div class="field__error" id="importError" role="alert"></div>
+		<!-- Import from Excel / CSV Dialog -->
+		<dialog
+			class="notion-dialog notion-dialog--import"
+			id="importDialog"
+			aria-labelledby="importDialogTitle"
+		>
+			<div class="import-modal">
+				<div class="notion-form__header">
+					<h2 class="notion-form__title" id="importDialogTitle">
+						Import Staff from Excel / CSV
+					</h2>
+					<button
+						class="notion-form__close"
+						id="importDialogCloseX"
+						type="button"
+						aria-label="Close dialog"
+					>
+						x
+					</button>
+				</div>
 
-      <!-- Actions -->
-      <div class="notion-form__actions">
-        <button class="btn btn--subtle" type="button" id="importCancelBtn">Cancel</button>
-        <button class="btn btn--primary" type="button" id="importConfirmBtn" disabled>Import Staff Records</button>
-      </div>
-    </div>
-  </dialog>
+				<!-- Format Guidance Box -->
+				<div class="import-guide">
+					<div class="import-guide__top">
+						<span class="import-guide__lead"
+							>Expected Excel / CSV columns:</span
+						>
+						<button
+							class="btn btn--subtle btn--sm"
+							id="importDownloadTemplateBtn"
+							type="button"
+							title="Download Excel template"
+						>
+							<svg
+								width="13"
+								height="13"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+								<polyline points="7 10 12 15 17 10" />
+								<line x1="12" y1="15" x2="12" y2="3" />
+							</svg>
+							<span>Download Excel Template</span>
+						</button>
+					</div>
+					<div class="import-guide__format">
+						<code>Name</code> &bull;
+						<code>Type (Full-time/Part-time)</code> &bull;
+						<code>Department</code> &bull;
+						<code>Level (if Teaching)</code> &bull;
+						<code>Appointment</code> &bull; <code>Termination</code>
+					</div>
+					<div class="import-guide__notes">
+						You can upload a <code>.csv</code> file, or copy cells in Excel
+						(Ctrl+C) and paste below.
+					</div>
+				</div>
 
-  <!-- Toast Notification -->
-  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+				<!-- Import Settings: Calendar + Mode -->
+				<div class="import-options-row">
+					<div class="import-opt">
+						<label class="field__label">Dates in file are:</label>
+						<div
+							class="cal-segmented"
+							role="radiogroup"
+							aria-label="Import Date Calendar"
+							id="importCalSegmented"
+						>
+							<button
+								class="cal-segmented__btn"
+								id="import-cal-bs"
+								role="radio"
+								aria-checked="true"
+								type="button"
+								data-cal="bs"
+							>
+								B.S. (Bikram Sambat)
+							</button>
+							<button
+								class="cal-segmented__btn"
+								id="import-cal-ad"
+								role="radio"
+								aria-checked="false"
+								type="button"
+								data-cal="ad"
+							>
+								A.D. (Gregorian)
+							</button>
+						</div>
+					</div>
 
-  <script src="app.js"></script>
-</body>
+					<div class="import-opt">
+						<label class="field__label">Database Action:</label>
+						<select class="input input--sm" id="importModeSelect">
+							<option value="append">Append (Add to existing records)</option>
+							<option value="replace">
+								Replace (Overwrite existing records)
+							</option>
+						</select>
+					</div>
+				</div>
+
+				<!-- File Dropzone + Paste Area -->
+				<div class="import-input-grid">
+					<label class="import-dropzone" id="importDropzone">
+						<input
+							type="file"
+							id="importFileInput"
+							accept=".csv,.tsv,.txt"
+							hidden
+						/>
+						<svg
+							width="22"
+							height="22"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+							<polyline points="17 8 12 3 7 8" />
+							<line x1="12" y1="3" x2="12" y2="15" />
+						</svg>
+						<span class="import-dropzone__text"
+							><strong>Choose file</strong> or drop Excel CSV here</span
+						>
+					</label>
+
+					<div class="import-paste-area">
+						<textarea
+							class="input import-textarea"
+							id="importPasteInput"
+							rows="3"
+							placeholder="Or paste copied Excel rows here (Ctrl+V)..."
+						></textarea>
+					</div>
+				</div>
+
+				<!-- Live Preview Table -->
+				<div class="import-preview-section" id="importPreviewSection" hidden>
+					<div class="import-preview-header">
+						<h4 class="import-preview-title">
+							Preview: <span id="importValidCount">0</span> valid records (<span
+								id="importErrorCount"
+								>0</span
+							>
+							errors)
+						</h4>
+						<button class="link-clear-btn" id="importClearBtn" type="button">
+							Clear Data
+						</button>
+					</div>
+					<div class="import-preview-table-wrap">
+						<table class="import-preview-table">
+							<thead>
+								<tr>
+									<th style="width: 36px; text-align: center">#</th>
+									<th>Name</th>
+									<th>Type</th>
+									<th>Department</th>
+									<th>Level</th>
+									<th>Appointment</th>
+									<th>Termination</th>
+									<th style="width: 110px">Status</th>
+								</tr>
+							</thead>
+							<tbody id="importPreviewTbody"></tbody>
+						</table>
+					</div>
+				</div>
+
+				<!-- Error alert -->
+				<div class="field__error" id="importError" role="alert"></div>
+
+				<!-- Actions -->
+				<div class="notion-form__actions">
+					<button class="btn btn--subtle" type="button" id="importCancelBtn">
+						Cancel
+					</button>
+					<button
+						class="btn btn--primary"
+						type="button"
+						id="importConfirmBtn"
+						disabled
+					>
+						Import Staff Records
+					</button>
+				</div>
+			</div>
+		</dialog>
+
+		<!-- Toast Notification -->
+		<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+		<script src="app.js"></script>
+	</body>
 </html>
